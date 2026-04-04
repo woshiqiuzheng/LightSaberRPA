@@ -1,10 +1,12 @@
-import type { NavItem } from "../types";
+import type { NavItem, NavSectionId } from "../types";
 
 interface SidebarProps {
   items: NavItem[];
+  activeItemId: NavSectionId;
+  onSelect: (id: NavSectionId) => void;
 }
 
-export function Sidebar({ items }: SidebarProps) {
+export function Sidebar({ items, activeItemId, onSelect }: SidebarProps) {
   return (
     <aside className="sidebar">
       <button className="primary-button" type="button">
@@ -12,10 +14,15 @@ export function Sidebar({ items }: SidebarProps) {
       </button>
 
       <section className="sidebar__section">
-        <div className="sidebar__section-title">My Apps</div>
+        <div className="sidebar__section-title">Workspace</div>
         <div className="sidebar__menu">
-          {items.map((item, index) => (
-            <button key={item.id} className={`sidebar__menu-item${index === 0 ? " is-active" : ""}`} type="button">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              className={`sidebar__menu-item${item.id === activeItemId ? " is-active" : ""}`}
+              onClick={() => onSelect(item.id)}
+              type="button"
+            >
               <span>{item.label}</span>
               {item.count ? <span className="sidebar__badge">{item.count}</span> : null}
             </button>

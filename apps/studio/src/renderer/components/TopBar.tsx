@@ -1,11 +1,13 @@
-import type { NavItem } from "../types";
+import type { NavItem, NavSectionId } from "../types";
 
 interface TopBarProps {
   items: NavItem[];
+  activeItemId: NavSectionId;
+  onSelect: (id: NavSectionId) => void;
   runtimeLabel: string;
 }
 
-export function TopBar({ items, runtimeLabel }: TopBarProps) {
+export function TopBar({ items, activeItemId, onSelect, runtimeLabel }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar__brand">
@@ -17,8 +19,13 @@ export function TopBar({ items, runtimeLabel }: TopBarProps) {
       </div>
 
       <nav className="topbar__nav" aria-label="Primary">
-        {items.map((item, index) => (
-          <button key={item.id} className={`topbar__nav-item${index === 0 ? " is-active" : ""}`} type="button">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            className={`topbar__nav-item${item.id === activeItemId ? " is-active" : ""}`}
+            onClick={() => onSelect(item.id)}
+            type="button"
+          >
             {item.label}
           </button>
         ))}
