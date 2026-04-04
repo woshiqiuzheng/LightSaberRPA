@@ -4,8 +4,26 @@
   "version": "0.1.0",
   "description": "Instruction metadata for LightSaberRPA.",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@lightsaber-rpa/flow-core": "workspace:*",
+    "@lightsaber-rpa/shared": "workspace:*"
+  },
   "scripts": {
-    "build": "node -e \"console.log('instruction-manifests build scaffold pending')\"",
-    "typecheck": "node -e \"console.log('instruction-manifests typecheck scaffold pending')\""
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --pretty false --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
   }
 }
