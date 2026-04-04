@@ -4,8 +4,25 @@
   "version": "0.1.0",
   "description": "Flow DSL and runtime contracts for LightSaberRPA.",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@lightsaber-rpa/shared": "workspace:*"
+  },
   "scripts": {
-    "build": "node -e \"console.log('flow-core build scaffold pending')\"",
-    "typecheck": "node -e \"console.log('flow-core typecheck scaffold pending')\""
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
   }
 }

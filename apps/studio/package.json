@@ -3,9 +3,28 @@
   "private": true,
   "version": "0.1.0",
   "description": "Desktop studio for LightSaberRPA.",
+  "type": "module",
+  "main": "out/main/index.js",
   "scripts": {
-    "build": "node -e \"console.log('Studio build scaffold pending')\"",
-    "dev": "node -e \"console.log('Studio scaffold pending')\"",
-    "typecheck": "node -e \"console.log('Studio typecheck scaffold pending')\""
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.node.json --noEmit"
+  },
+  "dependencies": {
+    "@lightsaber-rpa/flow-core": "workspace:*",
+    "@lightsaber-rpa/shared": "workspace:*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^35.2.1",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.19"
   }
 }

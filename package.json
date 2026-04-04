@@ -4,12 +4,20 @@
   "version": "0.1.0",
   "description": "Windows-first desktop RPA monorepo.",
   "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ]
+  },
   "scripts": {
-    "build": "pnpm -r --if-present build",
-    "dev:runner": "pnpm --filter @lightsaber-rpa/runner dev",
-    "dev:studio": "pnpm --filter @lightsaber-rpa/studio dev",
-    "format": "pnpm -r --if-present format",
-    "lint": "pnpm -r --if-present lint",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "build": "corepack pnpm -r --if-present build",
+    "build:studio": "corepack pnpm --filter @lightsaber-rpa/studio build",
+    "dev:runner": "corepack pnpm --filter @lightsaber-rpa/runner dev",
+    "dev:studio": "corepack pnpm --filter @lightsaber-rpa/studio dev",
+    "format": "corepack pnpm -r --if-present format",
+    "lint": "corepack pnpm -r --if-present lint",
+    "typecheck": "corepack pnpm -r --if-present typecheck",
+    "typecheck:studio": "corepack pnpm --filter @lightsaber-rpa/studio typecheck"
   }
 }

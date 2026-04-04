@@ -10,6 +10,7 @@ release/
 .turbo/
 .vite/
 coverage/
+*.tsbuildinfo
 
 # Logs
 *.log
