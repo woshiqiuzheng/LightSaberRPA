@@ -58,6 +58,14 @@ export interface StudioTaskRecord {
   enabled: boolean;
 }
 
+export interface TriggerDraftInput {
+  appId: string;
+  name: string;
+  trigger: string;
+  condition: string;
+  enabled: boolean;
+}
+
 export interface ResourceStat {
   label: string;
   value: string;

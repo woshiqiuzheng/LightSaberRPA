@@ -32,7 +32,8 @@ import type {
   FlowStepStatusMap,
   InstructionPaletteEntry,
   NavSectionId,
-  StudioWorkspaceSnapshot
+  StudioWorkspaceSnapshot,
+  TriggerDraftInput
 } from "./types";
 
 export function App() {
@@ -413,6 +414,23 @@ export function App() {
     setWorkspaceLabel("Updated trigger state");
   }
 
+  function handleCreateTrigger(input: TriggerDraftInput) {
+    const appName =
+      appRecords.find((record) => record.app.id === input.appId)?.app.name ?? "Unknown app";
+    const nextTask = {
+      id: createTriggerId(taskRecords),
+      appId: input.appId,
+      name: input.name,
+      trigger: input.trigger,
+      app: appName,
+      condition: input.condition,
+      enabled: input.enabled
+    };
+
+    setTaskRecords((current) => [nextTask, ...current]);
+    setWorkspaceLabel(`Created trigger ${input.name}`);
+  }
+
   function handleCreateApp() {
     if (executionMode) {
       return;
@@ -624,6 +642,11 @@ export function App() {
 
           {selectedSectionId === "triggers" ? (
             <TriggersWorkspace
+              apps={appRecords.map((record) => ({
+                id: record.app.id,
+                name: record.app.name
+              }))}
+              onCreateTask={handleCreateTrigger}
               onToggleTaskEnabled={handleToggleTaskEnabled}
               tasks={taskRecords}
             />
@@ -695,6 +718,10 @@ function formatStepIndex(index: number) {
 
 function getNextDraftSeed(appRecords: typeof studioApps) {
   return appRecords.filter((record) => record.app.id.startsWith("draft-app-")).length + 1;
+}
+
+function createTriggerId(taskRecords: { id: string }[]) {
+  return `task-${taskRecords.length + 1}`;
 }
 
 function isStudioWorkspaceSnapshot(value: unknown): value is StudioWorkspaceSnapshot {

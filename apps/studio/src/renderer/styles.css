@@ -44,7 +44,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -1141,6 +1142,48 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 18px;
+}
+
+.trigger-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.trigger-toolbar__button {
+  height: 44px;
+  padding: 0 18px;
+}
+
+.trigger-composer {
+  margin-top: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(97, 120, 164, 0.12);
+  background: #f6f9fe;
+  padding: 16px;
+}
+
+.trigger-composer__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trigger-composer__select {
+  width: 100%;
+  border: 1px solid rgba(97, 120, 164, 0.14);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: white;
+  color: var(--text);
+}
+
+.trigger-composer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .trigger-summary-card {
