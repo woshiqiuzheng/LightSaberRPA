@@ -1,9 +1,11 @@
+import { getInstructionManifest } from "@lightsaber-rpa/instruction-manifests";
 import { findFlowNode } from "@lightsaber-rpa/flow-core";
 
 import type { ResourceStat, StudioAppRecord, StudioTaskRecord } from "../types";
 
 interface RightPanelProps {
   isReadOnly?: boolean;
+  onSelectedNodeConfigChange: (key: string, value: string | number | boolean) => void;
   record: StudioAppRecord;
   stats: ResourceStat[];
   tasks: StudioTaskRecord[];
@@ -13,6 +15,7 @@ interface RightPanelProps {
 
 export function RightPanel({
   isReadOnly,
+  onSelectedNodeConfigChange,
   record,
   stats,
   tasks,
@@ -20,6 +23,8 @@ export function RightPanel({
   onSelectedNodeChange
 }: RightPanelProps) {
   const selectedNode = findFlowNode(record.flow, selectedNodeId);
+  const selectedManifest =
+    selectedNode?.kind === "action" ? getInstructionManifest(selectedNode.instructionId) : undefined;
   const selectedConfigPreview =
     selectedNode?.kind === "action" ? JSON.stringify(selectedNode.config, null, 2) : undefined;
 
@@ -74,6 +79,23 @@ export function RightPanel({
             <div className="selection-editor__hint">
               Select another step in the canvas or add a new action from the instruction palette.
             </div>
+
+            {selectedNode.kind === "action" && selectedManifest?.inputSchema ? (
+              <div className="config-field-group">
+                <div className="form-field__label">Action config</div>
+                <div className="config-field-grid">
+                  {Object.entries(selectedManifest.inputSchema).map(([key, descriptor]) =>
+                    renderConfigField({
+                      descriptor,
+                      disabled: isReadOnly,
+                      keyName: key,
+                      onChange: onSelectedNodeConfigChange,
+                      value: selectedNode.config[key]
+                    })
+                  )}
+                </div>
+              </div>
+            ) : null}
 
             {selectedConfigPreview ? (
               <div className="selection-editor__config">
@@ -134,4 +156,73 @@ export function RightPanel({
       </section>
     </aside>
   );
+}
+
+function renderConfigField(props: {
+  keyName: string;
+  value: unknown;
+  descriptor: unknown;
+  disabled?: boolean;
+  onChange: (key: string, value: string | number | boolean) => void;
+}) {
+  const schema = normalizeSchemaDescriptor(props.descriptor);
+
+  if (!schema || (schema.type !== "string" && schema.type !== "number" && schema.type !== "boolean")) {
+    return (
+      <div key={props.keyName} className="config-field is-readonly">
+        <div className="form-field__label">{props.keyName}</div>
+        <div className="config-field__readonly">
+          Structured field. Keep using the JSON preview for complex values.
+        </div>
+      </div>
+    );
+  }
+
+  if (schema.type === "boolean") {
+    return (
+      <label key={props.keyName} className="checkbox-field">
+        <input
+          checked={Boolean(props.value)}
+          disabled={props.disabled}
+          onChange={(event) => props.onChange(props.keyName, event.target.checked)}
+          type="checkbox"
+        />
+        <span>
+          <strong>{props.keyName}</strong>
+          <small>{schema.optional ? "Optional toggle" : "Required toggle"}</small>
+        </span>
+      </label>
+    );
+  }
+
+  return (
+    <label key={props.keyName} className="form-field">
+      <span className="form-field__label">
+        {props.keyName}
+        {schema.optional ? " (optional)" : ""}
+      </span>
+      <input
+        disabled={props.disabled}
+        onChange={(event) =>
+          props.onChange(
+            props.keyName,
+            schema.type === "number" ? Number(event.target.value || 0) : event.target.value
+          )
+        }
+        type={schema.type === "number" ? "number" : "text"}
+        value={schema.type === "number" ? Number(props.value ?? 0) : String(props.value ?? "")}
+      />
+    </label>
+  );
+}
+
+function normalizeSchemaDescriptor(descriptor: unknown) {
+  if (!descriptor || typeof descriptor !== "object" || !("type" in descriptor)) {
+    return null;
+  }
+
+  return descriptor as {
+    type?: string;
+    optional?: boolean;
+  };
 }

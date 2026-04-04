@@ -292,6 +292,48 @@ export function App() {
     setWorkspaceLabel(`Editing ${selectedRecord.app.name}`);
   }
 
+  function handleSelectedNodeConfigChange(configKey: string, value: string | number | boolean) {
+    if (!selectedNodeId || executionMode) {
+      return;
+    }
+
+    setAppRecords((current) =>
+      current.map((record) => {
+        if (record.app.id !== selectedRecord.app.id) {
+          return record;
+        }
+
+        return {
+          ...record,
+          app: {
+            ...record.app,
+            updatedAt: "Just now"
+          },
+          project: {
+            ...record.project,
+            updatedAt: "Just now"
+          },
+          flow: updateFlowNode(record.flow, selectedNodeId, (node) => {
+            if (node.kind !== "action") {
+              return node;
+            }
+
+            return {
+              ...node,
+              config: {
+                ...node.config,
+                [configKey]: value
+              }
+            };
+          }),
+          lastRunLabel: `Updated ${configKey} just now`
+        };
+      })
+    );
+
+    setWorkspaceLabel(`Updated ${configKey}`);
+  }
+
   function handleCreateApp() {
     if (executionMode) {
       return;
@@ -486,6 +528,7 @@ export function App() {
                 />
                 <RightPanel
                   isReadOnly={executionMode !== null}
+                  onSelectedNodeConfigChange={handleSelectedNodeConfigChange}
                   onSelectedNodeChange={handleSelectedNodeChange}
                   record={selectedRecord}
                   selectedNodeId={selectedNodeId}
