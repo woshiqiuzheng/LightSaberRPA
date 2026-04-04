@@ -15,6 +15,7 @@ import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { TriggersWorkspace } from "./components/TriggersWorkspace";
 import {
+  createDraftStudioApp,
   deriveBottomPanels,
   deriveResourceStats,
   getTasksForApp,
@@ -23,15 +24,26 @@ import {
   tasks,
   studioApps
 } from "./data/mock";
-import type { InstructionPaletteEntry, NavSectionId } from "./types";
+import type {
+  InstructionPaletteEntry,
+  NavSectionId,
+  StudioWorkspaceSnapshot
+} from "./types";
 
 export function App() {
-  const [runtimeLabel, setRuntimeLabel] = useState("Runner offline");
+  const [bridgeLabel, setBridgeLabel] = useState("Runner offline");
+  const [workspaceLabel, setWorkspaceLabel] = useState("Loading workspace");
   const [appRecords, setAppRecords] = useState(studioApps);
   const [selectedSectionId, setSelectedSectionId] = useState<NavSectionId>("apps");
   const [selectedAppId, setSelectedAppId] = useState(studioApps[0]?.app.id ?? "");
   const [selectedNodeId, setSelectedNodeId] = useState(
     getFirstExecutableNodeId(studioApps[0]?.flow) ?? ""
+  );
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  const runtimeLabel = useMemo(
+    () => `${bridgeLabel} · ${workspaceLabel}`,
+    [bridgeLabel, workspaceLabel]
   );
 
   useEffect(() => {
@@ -42,16 +54,79 @@ export function App() {
     void window.lightSaberStudio
       .ping()
       .then(() => {
-        setRuntimeLabel("Runner connected");
+        setBridgeLabel("Runner connected");
       })
       .catch(() => {
-        setRuntimeLabel("Bridge not ready");
+        setBridgeLabel("Bridge not ready");
       });
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    void window.lightSaberStudio
+      .loadWorkspaceState()
+      .then((snapshot) => {
+        if (!isActive) {
+          return;
+        }
+
+        if (!isStudioWorkspaceSnapshot(snapshot)) {
+          setWorkspaceLabel("Workspace ready");
+          return;
+        }
+
+        if (snapshot.appRecords.length === 0) {
+          setWorkspaceLabel("Workspace ready");
+          return;
+        }
+
+        setAppRecords(snapshot.appRecords);
+        setSelectedAppId(snapshot.appRecords[0]?.app.id ?? studioApps[0]?.app.id ?? "");
+        setSelectedNodeId(getFirstExecutableNodeId(snapshot.appRecords[0]?.flow) ?? "");
+        setWorkspaceLabel("Workspace restored");
+      })
+      .catch(() => {
+        if (isActive) {
+          setWorkspaceLabel("Workspace load failed");
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsHydrated(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const selectedRecord = useMemo(
     () => appRecords.find((record) => record.app.id === selectedAppId) ?? appRecords[0],
     [appRecords, selectedAppId]
+  );
+
+  const workspaceNavItems = useMemo(
+    () =>
+      navItems.map((item) => {
+        if (item.id === "apps") {
+          return {
+            ...item,
+            count: appRecords.length
+          };
+        }
+
+        if (item.id === "triggers") {
+          return {
+            ...item,
+            count: tasks.length
+          };
+        }
+
+        return item;
+      }),
+    [appRecords.length]
   );
 
   const selectedTasks = useMemo(
@@ -81,6 +156,33 @@ export function App() {
     () => selectedRecord.flow.nodes.find((node) => node.id === selectedNodeId),
     [selectedNodeId, selectedRecord]
   );
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    const saveTimer = window.setTimeout(() => {
+      const snapshot: StudioWorkspaceSnapshot = {
+        version: "0.1.0",
+        savedAt: new Date().toISOString(),
+        appRecords
+      };
+
+      void window.lightSaberStudio
+        .saveWorkspaceState(snapshot as unknown as Record<string, unknown>)
+        .then(() => {
+          setWorkspaceLabel("Saved locally");
+        })
+        .catch(() => {
+          setWorkspaceLabel("Workspace save failed");
+        });
+    }, 400);
+
+    return () => {
+      window.clearTimeout(saveTimer);
+    };
+  }, [appRecords, isHydrated]);
 
   function handleSelectApp(appId: string) {
     setSelectedAppId(appId);
@@ -122,7 +224,7 @@ export function App() {
     );
 
     setSelectedNodeId(nextNodeId);
-    setRuntimeLabel(`Inserted ${instruction.name}`);
+    setWorkspaceLabel(`Inserted ${instruction.name}`);
   }
 
   function handleSelectedNodeChange(field: "name" | "description", value: string) {
@@ -161,14 +263,25 @@ export function App() {
       })
     );
 
-    setRuntimeLabel(`Editing ${selectedRecord.app.name}`);
+    setWorkspaceLabel(`Editing ${selectedRecord.app.name}`);
+  }
+
+  function handleCreateApp() {
+    const nextSeed = getNextDraftSeed(appRecords);
+    const nextRecord = createDraftStudioApp(nextSeed);
+
+    setAppRecords((current) => [nextRecord, ...current]);
+    setSelectedAppId(nextRecord.app.id);
+    setSelectedNodeId(getFirstExecutableNodeId(nextRecord.flow) ?? "");
+    setSelectedSectionId("apps");
+    setWorkspaceLabel(`Created ${nextRecord.app.name}`);
   }
 
   return (
     <div className="app-shell">
       <TopBar
         activeItemId={selectedSectionId}
-        items={navItems}
+        items={workspaceNavItems}
         onSelect={setSelectedSectionId}
         runtimeLabel={runtimeLabel}
       />
@@ -176,7 +289,8 @@ export function App() {
       <div className="app-shell__workspace">
         <Sidebar
           activeItemId={selectedSectionId}
-          items={navItems}
+          items={workspaceNavItems}
+          onCreateApp={handleCreateApp}
           onSelect={setSelectedSectionId}
         />
 
@@ -275,4 +389,17 @@ function createActionNodeId(existingIds: string[], instructionId: string) {
   }
 
   return candidateId;
+}
+
+function getNextDraftSeed(appRecords: typeof studioApps) {
+  return appRecords.filter((record) => record.app.id.startsWith("draft-app-")).length + 1;
+}
+
+function isStudioWorkspaceSnapshot(value: unknown): value is StudioWorkspaceSnapshot {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "appRecords" in value &&
+    Array.isArray((value as StudioWorkspaceSnapshot).appRecords)
+  );
 }

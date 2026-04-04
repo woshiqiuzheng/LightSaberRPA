@@ -47,39 +47,59 @@ export function Canvas({ record, selectedNodeId, onSelectNode }: CanvasProps) {
         </article>
       </div>
 
-      <div className="canvas__selection-banner">
-        <span className="canvas__selection-label">Selected step</span>
-        <strong>{selectedNode?.name ?? "Nothing selected yet"}</strong>
-        <p>
-          Pick a step in the flow, then add a new instruction from the left palette to insert it
-          right after the selection.
-        </p>
-      </div>
-
-      <div className="flow-step-list">
-        {visibleNodes.map((node, index) => (
-          <button
-            key={node.id}
-            className={`flow-step-card${node.id === selectedNodeId ? " is-active" : ""}`}
-            onClick={() => onSelectNode(node.id)}
-            type="button"
-          >
-            <div className="flow-step-card__index">{String(index + 1).padStart(2, "0")}</div>
-            <div className="flow-step-card__content">
-              <div className="flow-step-card__header">
-                <div>
-                  <h3>{node.name}</h3>
-                  <p>{node.description ?? "No step description yet."}</p>
-                </div>
-                <span className={`flow-step-card__kind kind-${node.kind}`}>{node.kind}</span>
-              </div>
-              <div className="flow-step-card__meta">
-                {renderNodeMeta(node)}
-              </div>
+      {visibleNodes.length === 0 ? (
+        <div className="canvas__empty-state">
+          <div className="canvas__hero" aria-hidden="true">
+            <div className="canvas__hero-badge">LS</div>
+            <div className="canvas__hero-art">
+              <div className="canvas__hero-circle" />
+              <div className="canvas__hero-card canvas__hero-card--top" />
+              <div className="canvas__hero-card canvas__hero-card--bottom" />
             </div>
-          </button>
-        ))}
-      </div>
+          </div>
+          <h2>Start building this flow</h2>
+          <p>
+            This app is still empty. Pick an instruction from the left palette to create the first
+            step, then select it to keep shaping the flow.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="canvas__selection-banner">
+            <span className="canvas__selection-label">Selected step</span>
+            <strong>{selectedNode?.name ?? "Nothing selected yet"}</strong>
+            <p>
+              Pick a step in the flow, then add a new instruction from the left palette to insert
+              it right after the selection.
+            </p>
+          </div>
+
+          <div className="flow-step-list">
+            {visibleNodes.map((node, index) => (
+              <button
+                key={node.id}
+                className={`flow-step-card${node.id === selectedNodeId ? " is-active" : ""}`}
+                onClick={() => onSelectNode(node.id)}
+                type="button"
+              >
+                <div className="flow-step-card__index">{String(index + 1).padStart(2, "0")}</div>
+                <div className="flow-step-card__content">
+                  <div className="flow-step-card__header">
+                    <div>
+                      <h3>{node.name}</h3>
+                      <p>{node.description ?? "No step description yet."}</p>
+                    </div>
+                    <span className={`flow-step-card__kind kind-${node.kind}`}>{node.kind}</span>
+                  </div>
+                  <div className="flow-step-card__meta">
+                    {renderNodeMeta(node)}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </main>
   );
 }

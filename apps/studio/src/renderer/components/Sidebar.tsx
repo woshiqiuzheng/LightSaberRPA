@@ -4,12 +4,13 @@ interface SidebarProps {
   items: NavItem[];
   activeItemId: NavSectionId;
   onSelect: (id: NavSectionId) => void;
+  onCreateApp?: () => void;
 }
 
-export function Sidebar({ items, activeItemId, onSelect }: SidebarProps) {
+export function Sidebar({ items, activeItemId, onCreateApp, onSelect }: SidebarProps) {
   return (
     <aside className="sidebar">
-      <button className="primary-button" type="button">
+      <button className="primary-button" onClick={onCreateApp} type="button">
         + New
       </button>
 

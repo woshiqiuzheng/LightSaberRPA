@@ -70,3 +70,9 @@ export interface BottomPanelRecord {
   status: string;
   items: string[];
 }
+
+export interface StudioWorkspaceSnapshot {
+  version: string;
+  savedAt: string;
+  appRecords: StudioAppRecord[];
+}

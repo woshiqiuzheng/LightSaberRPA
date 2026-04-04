@@ -219,6 +219,21 @@ export function deriveBottomPanels(
   ];
 }
 
+export function createDraftStudioApp(seed: number): StudioAppRecord {
+  return createStudioApp({
+    id: `draft-app-${seed}`,
+    name: `Untitled App ${seed}`,
+    domain: "New automation",
+    updatedAt: "Just now",
+    badge: `N${seed}`,
+    status: "draft",
+    scenario: "Start with an empty flow, then add instructions from the palette.",
+    focusFields: ["input", "output"],
+    lastRunLabel: "Draft created just now",
+    nodes: []
+  });
+}
+
 function createStudioApp(config: {
   id: string;
   name: string;
