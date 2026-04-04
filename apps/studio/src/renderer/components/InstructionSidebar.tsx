@@ -3,12 +3,14 @@ import { useMemo, useState } from "react";
 import type { InstructionGroup, InstructionPaletteEntry } from "../types";
 
 interface InstructionSidebarProps {
+  disabled?: boolean;
   groups: InstructionGroup[];
   selectedNodeLabel?: string;
   onInsertInstruction: (instruction: InstructionPaletteEntry) => void;
 }
 
 export function InstructionSidebar({
+  disabled,
   groups,
   selectedNodeLabel,
   onInsertInstruction
@@ -56,6 +58,7 @@ export function InstructionSidebar({
         <span className="instruction-sidebar__search-icon">S</span>
         <input
           aria-label="Search instructions"
+          disabled={disabled}
           onChange={(event) => setSearchValue(event.target.value)}
           placeholder="Search instructions"
           type="search"
@@ -96,6 +99,7 @@ export function InstructionSidebar({
                 <button
                   key={instruction.id}
                   className="instruction-card"
+                  disabled={disabled}
                   onClick={() => onInsertInstruction(instruction)}
                   type="button"
                 >

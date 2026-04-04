@@ -1,10 +1,11 @@
 import {
   createFlowActionNode,
+  getExecutableFlowNodes,
   getFirstExecutableNodeId,
   insertActionNodeAfter,
   updateFlowNode
 } from "@lightsaber-rpa/flow-core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BottomPanels } from "./components/BottomPanels";
 import { Canvas } from "./components/Canvas";
@@ -25,6 +26,9 @@ import {
   studioApps
 } from "./data/mock";
 import type {
+  BottomPanelRecord,
+  ExecutionMode,
+  FlowStepStatusMap,
   InstructionPaletteEntry,
   NavSectionId,
   StudioWorkspaceSnapshot
@@ -40,17 +44,18 @@ export function App() {
     getFirstExecutableNodeId(studioApps[0]?.flow) ?? ""
   );
   const [isHydrated, setIsHydrated] = useState(false);
+  const [executionMode, setExecutionMode] = useState<ExecutionMode | null>(null);
+  const [nodeStatuses, setNodeStatuses] = useState<FlowStepStatusMap>({});
+  const [runLogItems, setRunLogItems] = useState<string[]>([]);
+  const executionTimersRef = useRef<number[]>([]);
+  const executionTokenRef = useRef(0);
 
   const runtimeLabel = useMemo(
-    () => `${bridgeLabel} · ${workspaceLabel}`,
+    () => `${bridgeLabel} / ${workspaceLabel}`,
     [bridgeLabel, workspaceLabel]
   );
 
   useEffect(() => {
-    if (!window.lightSaberStudio?.ping) {
-      return;
-    }
-
     void window.lightSaberStudio
       .ping()
       .then(() => {
@@ -71,12 +76,7 @@ export function App() {
           return;
         }
 
-        if (!isStudioWorkspaceSnapshot(snapshot)) {
-          setWorkspaceLabel("Workspace ready");
-          return;
-        }
-
-        if (snapshot.appRecords.length === 0) {
+        if (!isStudioWorkspaceSnapshot(snapshot) || snapshot.appRecords.length === 0) {
           setWorkspaceLabel("Workspace ready");
           return;
         }
@@ -103,7 +103,7 @@ export function App() {
   }, []);
 
   const selectedRecord = useMemo(
-    () => appRecords.find((record) => record.app.id === selectedAppId) ?? appRecords[0],
+    () => appRecords.find((record) => record.app.id === selectedAppId) ?? appRecords[0] ?? studioApps[0],
     [appRecords, selectedAppId]
   );
 
@@ -140,8 +140,13 @@ export function App() {
   );
 
   const bottomPanels = useMemo(
-    () => deriveBottomPanels(selectedRecord, selectedTasks),
-    [selectedRecord, selectedTasks]
+    () =>
+      applyExecutionPanels(
+        deriveBottomPanels(selectedRecord, selectedTasks),
+        runLogItems,
+        executionMode
+      ),
+    [executionMode, runLogItems, selectedRecord, selectedTasks]
   );
 
   useEffect(() => {
@@ -184,15 +189,36 @@ export function App() {
     };
   }, [appRecords, isHydrated]);
 
+  useEffect(() => {
+    return () => {
+      clearExecutionTimers(executionTimersRef);
+    };
+  }, []);
+
+  useEffect(() => {
+    clearExecutionTimers(executionTimersRef);
+    executionTokenRef.current += 1;
+    setExecutionMode(null);
+    setNodeStatuses({});
+    setRunLogItems([]);
+  }, [selectedAppId]);
+
   function handleSelectApp(appId: string) {
     setSelectedAppId(appId);
 
-    const nextRecord = appRecords.find((record) => record.app.id === appId) ?? appRecords[0];
+    const nextRecord = appRecords.find((record) => record.app.id === appId) ?? appRecords[0] ?? studioApps[0];
     setSelectedNodeId(getFirstExecutableNodeId(nextRecord.flow) ?? "");
   }
 
   function handleInsertInstruction(instruction: InstructionPaletteEntry) {
-    const nextNodeId = createActionNodeId(selectedRecord.flow.nodes.map((node) => node.id), instruction.id);
+    if (executionMode) {
+      return;
+    }
+
+    const nextNodeId = createActionNodeId(
+      selectedRecord.flow.nodes.map((node) => node.id),
+      instruction.id
+    );
     const nextNode = createFlowActionNode({
       id: nextNodeId,
       name: instruction.name,
@@ -228,7 +254,7 @@ export function App() {
   }
 
   function handleSelectedNodeChange(field: "name" | "description", value: string) {
-    if (!selectedNodeId) {
+    if (!selectedNodeId || executionMode) {
       return;
     }
 
@@ -267,6 +293,10 @@ export function App() {
   }
 
   function handleCreateApp() {
+    if (executionMode) {
+      return;
+    }
+
     const nextSeed = getNextDraftSeed(appRecords);
     const nextRecord = createDraftStudioApp(nextSeed);
 
@@ -275,6 +305,104 @@ export function App() {
     setSelectedNodeId(getFirstExecutableNodeId(nextRecord.flow) ?? "");
     setSelectedSectionId("apps");
     setWorkspaceLabel(`Created ${nextRecord.app.name}`);
+  }
+
+  function handleRun() {
+    startExecutionPlayback("run");
+  }
+
+  function handleDebug() {
+    startExecutionPlayback("debug");
+  }
+
+  function startExecutionPlayback(mode: ExecutionMode) {
+    const executableNodes = getExecutableFlowNodes(selectedRecord.flow);
+
+    if (executableNodes.length === 0) {
+      setWorkspaceLabel("Flow is empty");
+      setRunLogItems(["Flow is empty. Add a few instructions before running playback."]);
+      return;
+    }
+
+    clearExecutionTimers(executionTimersRef);
+
+    const nextToken = executionTokenRef.current + 1;
+    executionTokenRef.current = nextToken;
+
+    setExecutionMode(mode);
+    setNodeStatuses(
+      Object.fromEntries(executableNodes.map((node) => [node.id, "idle"])) as FlowStepStatusMap
+    );
+    setRunLogItems([`${mode === "debug" ? "Debug" : "Run"} started for ${selectedRecord.app.name}`]);
+    setWorkspaceLabel(mode === "debug" ? "Debug playback started" : "Run playback started");
+
+    const startSpacingMs = mode === "debug" ? 1400 : 850;
+    const stepDurationMs = mode === "debug" ? 800 : 420;
+
+    executableNodes.forEach((node, index) => {
+      const startDelay = index * startSpacingMs;
+      const finishDelay = startDelay + stepDurationMs;
+
+      executionTimersRef.current.push(
+        window.setTimeout(() => {
+          if (executionTokenRef.current !== nextToken) {
+            return;
+          }
+
+          setSelectedNodeId(node.id);
+          setNodeStatuses((current) => ({
+            ...current,
+            [node.id]: "running"
+          }));
+          setRunLogItems((current) =>
+            appendRunLog(current, `${formatStepIndex(index)} Running ${node.name}`)
+          );
+        }, startDelay)
+      );
+
+      executionTimersRef.current.push(
+        window.setTimeout(() => {
+          if (executionTokenRef.current !== nextToken) {
+            return;
+          }
+
+          setNodeStatuses((current) => ({
+            ...current,
+            [node.id]: "success"
+          }));
+          setRunLogItems((current) =>
+            appendRunLog(current, `${formatStepIndex(index)} Completed ${node.name}`)
+          );
+
+          if (index === executableNodes.length - 1) {
+            clearExecutionTimers(executionTimersRef);
+            executionTokenRef.current += 1;
+            setExecutionMode(null);
+            setWorkspaceLabel(mode === "debug" ? "Debug playback finished" : "Run playback finished");
+            setAppRecords((current) =>
+              current.map((record) => {
+                if (record.app.id !== selectedRecord.app.id) {
+                  return record;
+                }
+
+                return {
+                  ...record,
+                  lastRunLabel: `${mode === "debug" ? "Debugged" : "Ran"} just now`,
+                  app: {
+                    ...record.app,
+                    updatedAt: "Just now"
+                  },
+                  project: {
+                    ...record.project,
+                    updatedAt: "Just now"
+                  }
+                };
+              })
+            );
+          }
+        }, finishDelay)
+      );
+    });
   }
 
   return (
@@ -342,16 +470,22 @@ export function App() {
 
               <div className="main-area__editor">
                 <InstructionSidebar
+                  disabled={executionMode !== null}
                   groups={instructionGroups}
                   onInsertInstruction={handleInsertInstruction}
                   selectedNodeLabel={selectedNode?.name}
                 />
                 <Canvas
+                  executionMode={executionMode}
+                  nodeStatuses={nodeStatuses}
+                  onDebug={handleDebug}
+                  onRun={handleRun}
                   onSelectNode={setSelectedNodeId}
                   record={selectedRecord}
                   selectedNodeId={selectedNodeId}
                 />
                 <RightPanel
+                  isReadOnly={executionMode !== null}
                   onSelectedNodeChange={handleSelectedNodeChange}
                   record={selectedRecord}
                   selectedNodeId={selectedNodeId}
@@ -374,6 +508,41 @@ export function App() {
   );
 }
 
+function applyExecutionPanels(
+  panels: BottomPanelRecord[],
+  runLogItems: string[],
+  executionMode: ExecutionMode | null
+) {
+  return panels.map((panel) => {
+    if (panel.id !== "run-log") {
+      return panel;
+    }
+
+    if (runLogItems.length === 0) {
+      return panel;
+    }
+
+    return {
+      ...panel,
+      status: executionMode
+        ? executionMode === "debug"
+          ? "Debug playback running"
+          : "Run playback running"
+        : "Latest local playback",
+      items: runLogItems
+    };
+  });
+}
+
+function appendRunLog(current: string[], entry: string) {
+  return [...current, entry].slice(-8);
+}
+
+function clearExecutionTimers(timersRef: { current: number[] }) {
+  timersRef.current.forEach((timer) => window.clearTimeout(timer));
+  timersRef.current = [];
+}
+
 function cloneConfig(config: Record<string, unknown>) {
   return JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
 }
@@ -389,6 +558,10 @@ function createActionNodeId(existingIds: string[], instructionId: string) {
   }
 
   return candidateId;
+}
+
+function formatStepIndex(index: number) {
+  return `${String(index + 1).padStart(2, "0")}.`;
 }
 
 function getNextDraftSeed(appRecords: typeof studioApps) {

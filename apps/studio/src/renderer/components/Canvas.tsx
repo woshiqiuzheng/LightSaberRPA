@@ -1,16 +1,29 @@
-import { getExecutableFlowNodes, type FlowNode } from "@lightsaber-rpa/flow-core";
+import { getExecutableFlowNodes, type FlowNodeStatus, type FlowNode } from "@lightsaber-rpa/flow-core";
 
-import type { StudioAppRecord } from "../types";
+import type { ExecutionMode, FlowStepStatusMap, StudioAppRecord } from "../types";
 
 interface CanvasProps {
   record: StudioAppRecord;
   selectedNodeId?: string;
+  executionMode: ExecutionMode | null;
+  nodeStatuses: FlowStepStatusMap;
   onSelectNode: (nodeId: string) => void;
+  onRun: () => void;
+  onDebug: () => void;
 }
 
-export function Canvas({ record, selectedNodeId, onSelectNode }: CanvasProps) {
+export function Canvas({
+  record,
+  selectedNodeId,
+  executionMode,
+  nodeStatuses,
+  onSelectNode,
+  onRun,
+  onDebug
+}: CanvasProps) {
   const visibleNodes = getExecutableFlowNodes(record.flow);
   const selectedNode = visibleNodes.find((node) => node.id === selectedNodeId);
+  const isBusy = executionMode !== null;
 
   return (
     <main className="canvas">
@@ -20,13 +33,23 @@ export function Canvas({ record, selectedNodeId, onSelectNode }: CanvasProps) {
           <h1 className="canvas__title">{record.flow.name}</h1>
         </div>
         <div className="canvas__toolbar">
-          <button className="canvas__toolbar-button is-primary" type="button">
-            Run
+          <button
+            className="canvas__toolbar-button is-primary"
+            disabled={isBusy}
+            onClick={onRun}
+            type="button"
+          >
+            {executionMode === "run" ? "Running..." : "Run"}
           </button>
-          <button className="canvas__toolbar-button" type="button">
-            Debug
+          <button
+            className="canvas__toolbar-button"
+            disabled={isBusy}
+            onClick={onDebug}
+            type="button"
+          >
+            {executionMode === "debug" ? "Debugging..." : "Debug"}
           </button>
-          <button className="canvas__toolbar-button" type="button">
+          <button className="canvas__toolbar-button" disabled type="button">
             Record
           </button>
         </div>
@@ -78,7 +101,7 @@ export function Canvas({ record, selectedNodeId, onSelectNode }: CanvasProps) {
             {visibleNodes.map((node, index) => (
               <button
                 key={node.id}
-                className={`flow-step-card${node.id === selectedNodeId ? " is-active" : ""}`}
+                className={`flow-step-card${node.id === selectedNodeId ? " is-active" : ""}${getNodeStatusClassName(nodeStatuses[node.id])}`}
                 onClick={() => onSelectNode(node.id)}
                 type="button"
               >
@@ -89,7 +112,14 @@ export function Canvas({ record, selectedNodeId, onSelectNode }: CanvasProps) {
                       <h3>{node.name}</h3>
                       <p>{node.description ?? "No step description yet."}</p>
                     </div>
-                    <span className={`flow-step-card__kind kind-${node.kind}`}>{node.kind}</span>
+                    <div className="flow-step-card__badges">
+                      <span className={`flow-step-card__kind kind-${node.kind}`}>{node.kind}</span>
+                      {nodeStatuses[node.id] ? (
+                        <span className={`flow-step-card__status is-${nodeStatuses[node.id]}`}>
+                          {nodeStatuses[node.id]}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="flow-step-card__meta">
                     {renderNodeMeta(node)}
@@ -123,4 +153,8 @@ function renderNodeMeta(node: FlowNode) {
   }
 
   return <span>kind: {node.kind}</span>;
+}
+
+function getNodeStatusClassName(status: FlowNodeStatus | undefined) {
+  return status ? ` is-${status}` : "";
 }

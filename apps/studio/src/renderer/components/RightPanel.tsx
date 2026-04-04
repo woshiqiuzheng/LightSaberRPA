@@ -3,6 +3,7 @@ import { findFlowNode } from "@lightsaber-rpa/flow-core";
 import type { ResourceStat, StudioAppRecord, StudioTaskRecord } from "../types";
 
 interface RightPanelProps {
+  isReadOnly?: boolean;
   record: StudioAppRecord;
   stats: ResourceStat[];
   tasks: StudioTaskRecord[];
@@ -11,6 +12,7 @@ interface RightPanelProps {
 }
 
 export function RightPanel({
+  isReadOnly,
   record,
   stats,
   tasks,
@@ -52,6 +54,7 @@ export function RightPanel({
             <label className="form-field">
               <span className="form-field__label">Step name</span>
               <input
+                disabled={isReadOnly}
                 onChange={(event) => onSelectedNodeChange("name", event.target.value)}
                 type="text"
                 value={selectedNode.name}
@@ -61,6 +64,7 @@ export function RightPanel({
             <label className="form-field">
               <span className="form-field__label">Description</span>
               <textarea
+                disabled={isReadOnly}
                 onChange={(event) => onSelectedNodeChange("description", event.target.value)}
                 rows={4}
                 value={selectedNode.description ?? ""}

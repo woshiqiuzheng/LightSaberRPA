@@ -395,6 +395,10 @@ button {
   background: transparent;
 }
 
+.instruction-sidebar__search input:disabled {
+  color: var(--muted);
+}
+
 .instruction-sidebar__tabs {
   display: flex;
   gap: 8px;
@@ -505,6 +509,12 @@ button {
   box-shadow: 0 14px 30px rgba(58, 82, 131, 0.08);
 }
 
+.instruction-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+}
+
 .instruction-card__head {
   display: flex;
   align-items: center;
@@ -577,6 +587,11 @@ button {
   padding: 10px 14px;
   background: rgba(255, 255, 255, 0.86);
   color: var(--text);
+}
+
+.canvas__toolbar-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .canvas__toolbar-button.is-primary {
@@ -746,6 +761,16 @@ button {
   box-shadow: 0 18px 36px rgba(255, 91, 84, 0.12);
 }
 
+.flow-step-card.is-running {
+  border-color: rgba(63, 105, 255, 0.26);
+  box-shadow: 0 18px 36px rgba(63, 105, 255, 0.14);
+}
+
+.flow-step-card.is-success {
+  border-color: rgba(31, 164, 75, 0.24);
+  box-shadow: 0 18px 36px rgba(31, 164, 75, 0.12);
+}
+
 .flow-step-card__index {
   display: grid;
   place-items: center;
@@ -763,6 +788,13 @@ button {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+}
+
+.flow-step-card__badges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
 }
 
 .flow-step-card__header p {
@@ -788,6 +820,35 @@ button {
   margin-top: 12px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.flow-step-card__status {
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.flow-step-card__status.is-idle {
+  color: #7e87a3;
+  background: rgba(126, 135, 163, 0.12);
+}
+
+.flow-step-card__status.is-running {
+  color: #3f69ff;
+  background: rgba(63, 105, 255, 0.12);
+}
+
+.flow-step-card__status.is-success {
+  color: #0f8b3d;
+  background: rgba(31, 164, 75, 0.12);
+}
+
+.flow-step-card__status.is-failed {
+  color: #b42318;
+  background: rgba(244, 67, 54, 0.12);
 }
 
 .link-button {
@@ -867,6 +928,12 @@ button {
   background: #f6f9fe;
   color: var(--text);
   outline: none;
+}
+
+.form-field input:disabled,
+.form-field textarea:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
 }
 
 .form-field textarea {
