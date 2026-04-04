@@ -43,7 +43,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -414,6 +415,20 @@ button {
   border-color: rgba(255, 91, 84, 0.22);
 }
 
+.instruction-sidebar__context {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 91, 84, 0.08);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.instruction-sidebar__context strong {
+  color: var(--text);
+}
+
 .instruction-sidebar__group-list {
   display: grid;
   gap: 12px;
@@ -438,8 +453,14 @@ button {
   font-weight: 600;
 }
 
-.instruction-group-card__arrow {
-  color: var(--muted);
+.instruction-group-card__count {
+  min-width: 28px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(63, 105, 255, 0.1);
+  color: #3f69ff;
+  font-size: 12px;
+  text-align: center;
 }
 
 .instruction-group-card__desc {
@@ -462,6 +483,63 @@ button {
   background: rgba(255, 91, 84, 0.08);
   color: #be4a43;
   font-size: 12px;
+}
+
+.instruction-group-card__instructions {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.instruction-card {
+  text-align: left;
+  width: 100%;
+  border: 1px solid rgba(97, 120, 164, 0.12);
+  border-radius: 16px;
+  padding: 12px;
+  background: white;
+}
+
+.instruction-card:hover {
+  border-color: rgba(255, 91, 84, 0.24);
+  box-shadow: 0 14px 30px rgba(58, 82, 131, 0.08);
+}
+
+.instruction-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.instruction-card__head span {
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.instruction-card p {
+  margin: 8px 0 0;
+  max-width: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.instruction-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.instruction-sidebar__empty {
+  padding: 20px 14px;
+  border-radius: 16px;
+  background: #f6f9fe;
+  color: var(--muted);
+  text-align: center;
 }
 
 .canvas {
@@ -627,6 +705,22 @@ button {
   line-height: 1.6;
 }
 
+.canvas__selection-banner {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(97, 120, 164, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(246, 249, 254, 0.92));
+}
+
+.canvas__selection-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .flow-step-list {
   display: grid;
   gap: 12px;
@@ -639,10 +733,17 @@ button {
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr);
   gap: 12px;
+  width: 100%;
+  text-align: left;
   border-radius: 18px;
   border: 1px solid rgba(97, 120, 164, 0.12);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(246, 249, 254, 0.92));
   padding: 12px;
+}
+
+.flow-step-card.is-active {
+  border-color: rgba(255, 91, 84, 0.24);
+  box-shadow: 0 18px 36px rgba(255, 91, 84, 0.12);
 }
 
 .flow-step-card__index {
@@ -716,6 +817,78 @@ button {
 .panel-card__title {
   font-weight: 700;
   margin-bottom: 12px;
+}
+
+.selection-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.selection-editor__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selection-editor__chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 91, 84, 0.12);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.selection-editor__chip.is-outline {
+  background: transparent;
+  border: 1px solid rgba(97, 120, 164, 0.18);
+  color: var(--muted);
+}
+
+.form-field {
+  display: grid;
+  gap: 8px;
+}
+
+.form-field__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  border: 1px solid rgba(97, 120, 164, 0.14);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: #f6f9fe;
+  color: var(--text);
+  outline: none;
+}
+
+.form-field textarea {
+  resize: vertical;
+  min-height: 92px;
+}
+
+.selection-editor__hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.selection-editor__config pre {
+  margin: 8px 0 0;
+  border-radius: 14px;
+  padding: 12px;
+  overflow: auto;
+  background: #0f1728;
+  color: #e8efff;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .panel-tree {

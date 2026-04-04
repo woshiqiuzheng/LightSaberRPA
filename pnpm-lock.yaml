@@ -15,6 +15,9 @@ importers:
       '@lightsaber-rpa/flow-core':
         specifier: workspace:*
         version: link:../../packages/flow-core
+      '@lightsaber-rpa/instruction-manifests':
+        specifier: workspace:*
+        version: link:../../packages/instruction-manifests
       '@lightsaber-rpa/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -60,7 +63,18 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  packages/instruction-manifests: {}
+  packages/instruction-manifests:
+    dependencies:
+      '@lightsaber-rpa/flow-core':
+        specifier: workspace:*
+        version: link:../flow-core
+      '@lightsaber-rpa/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   packages/shared:
     devDependencies:

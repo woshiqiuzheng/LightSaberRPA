@@ -1,15 +1,16 @@
-import type { FlowNode } from "@lightsaber-rpa/flow-core";
+import { getExecutableFlowNodes, type FlowNode } from "@lightsaber-rpa/flow-core";
 
 import type { StudioAppRecord } from "../types";
 
 interface CanvasProps {
   record: StudioAppRecord;
+  selectedNodeId?: string;
+  onSelectNode: (nodeId: string) => void;
 }
 
-export function Canvas({ record }: CanvasProps) {
-  const visibleNodes = record.flow.nodes.filter(
-    (node) => node.kind !== "start" && node.kind !== "end"
-  );
+export function Canvas({ record, selectedNodeId, onSelectNode }: CanvasProps) {
+  const visibleNodes = getExecutableFlowNodes(record.flow);
+  const selectedNode = visibleNodes.find((node) => node.id === selectedNodeId);
 
   return (
     <main className="canvas">
@@ -46,9 +47,23 @@ export function Canvas({ record }: CanvasProps) {
         </article>
       </div>
 
+      <div className="canvas__selection-banner">
+        <span className="canvas__selection-label">Selected step</span>
+        <strong>{selectedNode?.name ?? "Nothing selected yet"}</strong>
+        <p>
+          Pick a step in the flow, then add a new instruction from the left palette to insert it
+          right after the selection.
+        </p>
+      </div>
+
       <div className="flow-step-list">
         {visibleNodes.map((node, index) => (
-          <article key={node.id} className="flow-step-card">
+          <button
+            key={node.id}
+            className={`flow-step-card${node.id === selectedNodeId ? " is-active" : ""}`}
+            onClick={() => onSelectNode(node.id)}
+            type="button"
+          >
             <div className="flow-step-card__index">{String(index + 1).padStart(2, "0")}</div>
             <div className="flow-step-card__content">
               <div className="flow-step-card__header">
@@ -62,7 +77,7 @@ export function Canvas({ record }: CanvasProps) {
                 {renderNodeMeta(node)}
               </div>
             </div>
-          </article>
+          </button>
         ))}
       </div>
     </main>

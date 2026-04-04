@@ -1,3 +1,4 @@
+import type { InstructionManifestSpec } from "@lightsaber-rpa/instruction-manifests";
 import type { FlowDefinition } from "@lightsaber-rpa/flow-core";
 import type { AppMetadata, ProjectMetadata } from "@lightsaber-rpa/shared";
 
@@ -27,7 +28,14 @@ export interface InstructionGroup {
   label: string;
   description: string;
   tags: string[];
+  instructions: InstructionPaletteEntry[];
 }
+
+export interface InstructionDefinition {
+  defaultConfig: Record<string, unknown>;
+}
+
+export type InstructionPaletteEntry = InstructionManifestSpec & InstructionDefinition;
 
 export interface StudioAppRecord {
   app: AppMetadata;

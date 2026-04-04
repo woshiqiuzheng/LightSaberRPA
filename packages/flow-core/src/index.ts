@@ -126,6 +126,14 @@ export interface InstructionManifest {
   outputSchema?: Record<string, unknown>;
 }
 
+export interface FlowActionNodeInput {
+  id: string;
+  name: string;
+  instructionId: string;
+  config?: Record<string, unknown>;
+  description?: string;
+}
+
 export const FLOW_NODE_KINDS: readonly FlowNodeKind[] = [
   "start",
   "end",
@@ -199,3 +207,99 @@ export const DEFAULT_EXECUTION_CONTEXT: ExecutionContext = {
   variables: {},
   status: "idle"
 };
+
+export function createFlowActionNode(input: FlowActionNodeInput): FlowActionNode {
+  return {
+    id: input.id,
+    kind: "action",
+    name: input.name,
+    instructionId: input.instructionId,
+    description: input.description,
+    config: input.config ?? {}
+  };
+}
+
+export function findFlowNode(
+  flow: FlowDefinition,
+  nodeId: FlowNode["id"] | undefined
+): FlowNode | undefined {
+  return nodeId ? flow.nodes.find((node) => node.id === nodeId) : undefined;
+}
+
+export function getExecutableFlowNodes(flow: FlowDefinition): FlowNode[] {
+  return flow.nodes.filter((node) => node.kind !== "start" && node.kind !== "end");
+}
+
+export function getFirstExecutableNodeId(flow: FlowDefinition): FlowNode["id"] | undefined {
+  return getExecutableFlowNodes(flow)[0]?.id;
+}
+
+export function insertActionNodeAfter(
+  flow: FlowDefinition,
+  targetNodeId: FlowNode["id"] | undefined,
+  node: FlowActionNode
+): FlowDefinition {
+  const executableNodes = getExecutableFlowNodes(flow);
+  const insertIndex = targetNodeId
+    ? executableNodes.findIndex((item) => item.id === targetNodeId)
+    : executableNodes.length - 1;
+
+  const nextExecutableNodes = [...executableNodes];
+  nextExecutableNodes.splice(insertIndex >= 0 ? insertIndex + 1 : executableNodes.length, 0, node);
+
+  return rebuildLinearFlow(flow, nextExecutableNodes);
+}
+
+export function updateFlowNode(
+  flow: FlowDefinition,
+  nodeId: FlowNode["id"],
+  updater: (node: FlowNode) => FlowNode
+): FlowDefinition {
+  return {
+    ...flow,
+    nodes: flow.nodes.map((node) => (node.id === nodeId ? updater(node) : node))
+  };
+}
+
+export function rebuildLinearFlow(
+  flow: FlowDefinition,
+  executableNodes: FlowNode[]
+): FlowDefinition {
+  const startNode = flow.nodes.find((node): node is FlowStartNode => node.kind === "start") ?? {
+    id: "start",
+    kind: "start",
+    name: "Start"
+  };
+
+  const endNode = flow.nodes.find((node): node is FlowEndNode => node.kind === "end") ?? {
+    id: "end",
+    kind: "end",
+    name: "End"
+  };
+
+  const nodes: FlowNode[] = [
+    {
+      ...startNode,
+      nextNodeId: executableNodes[0]?.id ?? endNode.id
+    },
+    ...executableNodes,
+    endNode
+  ];
+
+  const edges: FlowEdge[] = [
+    {
+      from: startNode.id,
+      to: executableNodes[0]?.id ?? endNode.id
+    },
+    ...executableNodes.map((node, index) => ({
+      from: node.id,
+      to: executableNodes[index + 1]?.id ?? endNode.id
+    }))
+  ];
+
+  return {
+    ...flow,
+    nodes,
+    edges
+  };
+}

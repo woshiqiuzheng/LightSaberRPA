@@ -1,4 +1,10 @@
 import {
+  getInstructionManifestsByCategory,
+  INSTRUCTION_CATEGORIES,
+  type InstructionCategoryId,
+  type InstructionManifestSpec
+} from "@lightsaber-rpa/instruction-manifests";
+import {
   DEFAULT_FLOW_DEFINITION,
   type FlowDefinition,
   type FlowNode
@@ -28,54 +34,20 @@ export const navItems: NavItem[] = [
 ];
 
 export const instructionGroups: InstructionGroup[] = [
-  {
-    id: "control",
-    label: "Flow control",
-    description: "Conditions, loops, waits, retries, and exception handling.",
-    tags: ["logic", "branch"]
-  },
-  {
-    id: "web",
-    label: "Web automation",
-    description: "Open pages, click elements, read content, and capture repeated blocks.",
-    tags: ["browser", "DOM"]
-  },
-  {
-    id: "desktop",
-    label: "Desktop automation",
-    description: "Window activation, control actions, shortcuts, and OCR fallback.",
-    tags: ["UIA", "window"]
-  },
-  {
-    id: "data",
-    label: "Data processing",
-    description: "Text, lists, variables, JSON, and structured transforms.",
-    tags: ["cleaning", "mapping"]
-  },
-  {
-    id: "excel",
-    label: "Excel / WPS",
-    description: "Open, read, write, sort, and filter table data.",
-    tags: ["sheet", "report"]
-  },
-  {
-    id: "file",
-    label: "Files and folders",
-    description: "Watch, copy, move, rename, delete, and iterate directories.",
-    tags: ["trigger", "folder"]
-  },
-  {
-    id: "network",
-    label: "Network",
-    description: "HTTP, mail, FTP, and webhook connectors.",
-    tags: ["api", "sync"]
-  },
-  {
-    id: "system",
-    label: "System",
-    description: "Dialogs, clipboard, screenshots, and OS helper actions.",
-    tags: ["system", "helper"]
-  }
+  ...INSTRUCTION_CATEGORIES.map((category) => {
+    const manifests = getInstructionManifestsByCategory(category.id);
+
+    return {
+      id: category.id,
+      label: category.name,
+      description: category.description ?? "",
+      tags: deriveGroupTags(manifests),
+      instructions: manifests.map((manifest) => ({
+        ...manifest,
+        defaultConfig: buildDefaultConfig(manifest)
+      }))
+    };
+  })
 ];
 
 export const studioApps: StudioAppRecord[] = [
@@ -344,4 +316,42 @@ function actionNode(
 
 function getInstructionRef(node: FlowNode): string {
   return node.kind === "action" ? node.instructionId : node.kind;
+}
+
+function buildDefaultConfig(manifest: InstructionManifestSpec) {
+  const schema = manifest.inputSchema ?? {};
+
+  return Object.fromEntries(
+    Object.entries(schema).map(([key, descriptor]) => [key, getSchemaDefaultValue(descriptor)])
+  );
+}
+
+function deriveGroupTags(manifests: readonly InstructionManifestSpec[]) {
+  return Array.from(new Set(manifests.flatMap((manifest) => manifest.tags ?? []))).slice(0, 3);
+}
+
+function getSchemaDefaultValue(descriptor: unknown) {
+  if (!descriptor || typeof descriptor !== "object" || !("type" in descriptor)) {
+    return "";
+  }
+
+  const type = descriptor.type;
+
+  if (type === "number") {
+    return 0;
+  }
+
+  if (type === "boolean") {
+    return false;
+  }
+
+  if (type === "array") {
+    return [];
+  }
+
+  if (type === "object") {
+    return {};
+  }
+
+  return "";
 }

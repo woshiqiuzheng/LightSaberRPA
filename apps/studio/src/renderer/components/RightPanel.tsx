@@ -1,12 +1,26 @@
+import { findFlowNode } from "@lightsaber-rpa/flow-core";
+
 import type { ResourceStat, StudioAppRecord, StudioTaskRecord } from "../types";
 
 interface RightPanelProps {
   record: StudioAppRecord;
   stats: ResourceStat[];
   tasks: StudioTaskRecord[];
+  selectedNodeId?: string;
+  onSelectedNodeChange: (field: "name" | "description", value: string) => void;
 }
 
-export function RightPanel({ record, stats, tasks }: RightPanelProps) {
+export function RightPanel({
+  record,
+  stats,
+  tasks,
+  selectedNodeId,
+  onSelectedNodeChange
+}: RightPanelProps) {
+  const selectedNode = findFlowNode(record.flow, selectedNodeId);
+  const selectedConfigPreview =
+    selectedNode?.kind === "action" ? JSON.stringify(selectedNode.config, null, 2) : undefined;
+
   return (
     <aside className="right-panel">
       <section className="panel-card">
@@ -21,6 +35,56 @@ export function RightPanel({ record, stats, tasks }: RightPanelProps) {
           <span>version {record.project.version}</span>
           <span>{record.flow.nodes.length} nodes</span>
         </div>
+      </section>
+
+      <section className="panel-card">
+        <div className="panel-card__title">Selection</div>
+
+        {selectedNode && selectedNode.kind !== "start" && selectedNode.kind !== "end" ? (
+          <div className="selection-editor">
+            <div className="selection-editor__chips">
+              <span className="selection-editor__chip">{selectedNode.kind}</span>
+              {selectedNode.kind === "action" ? (
+                <span className="selection-editor__chip is-outline">{selectedNode.instructionId}</span>
+              ) : null}
+            </div>
+
+            <label className="form-field">
+              <span className="form-field__label">Step name</span>
+              <input
+                onChange={(event) => onSelectedNodeChange("name", event.target.value)}
+                type="text"
+                value={selectedNode.name}
+              />
+            </label>
+
+            <label className="form-field">
+              <span className="form-field__label">Description</span>
+              <textarea
+                onChange={(event) => onSelectedNodeChange("description", event.target.value)}
+                rows={4}
+                value={selectedNode.description ?? ""}
+              />
+            </label>
+
+            <div className="selection-editor__hint">
+              Select another step in the canvas or add a new action from the instruction palette.
+            </div>
+
+            {selectedConfigPreview ? (
+              <div className="selection-editor__config">
+                <div className="form-field__label">Config preview</div>
+                <pre>{selectedConfigPreview}</pre>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <article className="task-card">
+            <div className="task-card__condition">
+              Select a flow step to inspect and edit its summary details here.
+            </div>
+          </article>
+        )}
       </section>
 
       <section className="panel-card">
