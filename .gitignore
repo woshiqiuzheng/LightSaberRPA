@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+release/
+.turbo/
+.vite/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Electron / Playwright artifacts
+playwright-report/
+test-results/
+artifacts/
+downloads/
+
+# Local runtime data
+*.sqlite
+*.sqlite3
+*.db
+*.tmp
+temp/

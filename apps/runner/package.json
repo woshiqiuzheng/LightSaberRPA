@@ -1,0 +1,11 @@
+{
+  "name": "@lightsaber-rpa/runner",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local execution service for LightSaberRPA.",
+  "scripts": {
+    "build": "node -e \"console.log('Runner build scaffold pending')\"",
+    "dev": "node -e \"console.log('Runner scaffold pending')\"",
+    "typecheck": "node -e \"console.log('Runner typecheck scaffold pending')\""
+  }
+}

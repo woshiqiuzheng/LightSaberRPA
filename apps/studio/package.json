@@ -1,0 +1,11 @@
+{
+  "name": "@lightsaber-rpa/studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Desktop studio for LightSaberRPA.",
+  "scripts": {
+    "build": "node -e \"console.log('Studio build scaffold pending')\"",
+    "dev": "node -e \"console.log('Studio scaffold pending')\"",
+    "typecheck": "node -e \"console.log('Studio typecheck scaffold pending')\""
+  }
+}
