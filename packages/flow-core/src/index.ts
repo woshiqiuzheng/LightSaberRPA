@@ -261,6 +261,40 @@ export function updateFlowNode(
   };
 }
 
+export function removeFlowNode(
+  flow: FlowDefinition,
+  nodeId: FlowNode["id"]
+): FlowDefinition {
+  return rebuildLinearFlow(
+    flow,
+    getExecutableFlowNodes(flow).filter((node) => node.id !== nodeId)
+  );
+}
+
+export function moveFlowNode(
+  flow: FlowDefinition,
+  nodeId: FlowNode["id"],
+  direction: "up" | "down"
+): FlowDefinition {
+  const executableNodes = [...getExecutableFlowNodes(flow)];
+  const currentIndex = executableNodes.findIndex((node) => node.id === nodeId);
+
+  if (currentIndex < 0) {
+    return flow;
+  }
+
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+  if (targetIndex < 0 || targetIndex >= executableNodes.length) {
+    return flow;
+  }
+
+  const [node] = executableNodes.splice(currentIndex, 1);
+  executableNodes.splice(targetIndex, 0, node);
+
+  return rebuildLinearFlow(flow, executableNodes);
+}
+
 export function rebuildLinearFlow(
   flow: FlowDefinition,
   executableNodes: FlowNode[]

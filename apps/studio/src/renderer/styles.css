@@ -145,6 +145,17 @@ button {
   border: 1px solid var(--border);
 }
 
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ghost-button--danger {
+  color: #b42318;
+  border-color: rgba(244, 67, 54, 0.18);
+  background: rgba(244, 67, 54, 0.08);
+}
+
 .avatar-button {
   width: 36px;
   height: 36px;
@@ -945,6 +956,12 @@ button {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.selection-editor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .config-field-group {

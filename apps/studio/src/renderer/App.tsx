@@ -3,6 +3,8 @@ import {
   getExecutableFlowNodes,
   getFirstExecutableNodeId,
   insertActionNodeAfter,
+  moveFlowNode,
+  removeFlowNode,
   updateFlowNode
 } from "@lightsaber-rpa/flow-core";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -334,6 +336,74 @@ export function App() {
     setWorkspaceLabel(`Updated ${configKey}`);
   }
 
+  function handleMoveSelectedNode(direction: "up" | "down") {
+    if (!selectedNodeId || executionMode) {
+      return;
+    }
+
+    setAppRecords((current) =>
+      current.map((record) => {
+        if (record.app.id !== selectedRecord.app.id) {
+          return record;
+        }
+
+        return {
+          ...record,
+          app: {
+            ...record.app,
+            updatedAt: "Just now"
+          },
+          project: {
+            ...record.project,
+            updatedAt: "Just now"
+          },
+          flow: moveFlowNode(record.flow, selectedNodeId, direction),
+          lastRunLabel: `Moved step ${direction}`
+        };
+      })
+    );
+
+    setWorkspaceLabel(direction === "up" ? "Moved step up" : "Moved step down");
+  }
+
+  function handleDeleteSelectedNode() {
+    if (!selectedNodeId || executionMode) {
+      return;
+    }
+
+    const executableNodes = getExecutableFlowNodes(selectedRecord.flow);
+    const currentIndex = executableNodes.findIndex((node) => node.id === selectedNodeId);
+    const fallbackNodeId =
+      executableNodes[currentIndex + 1]?.id ??
+      executableNodes[currentIndex - 1]?.id ??
+      "";
+
+    setAppRecords((current) =>
+      current.map((record) => {
+        if (record.app.id !== selectedRecord.app.id) {
+          return record;
+        }
+
+        return {
+          ...record,
+          app: {
+            ...record.app,
+            updatedAt: "Just now"
+          },
+          project: {
+            ...record.project,
+            updatedAt: "Just now"
+          },
+          flow: removeFlowNode(record.flow, selectedNodeId),
+          lastRunLabel: "Removed selected step"
+        };
+      })
+    );
+
+    setSelectedNodeId(fallbackNodeId);
+    setWorkspaceLabel("Deleted selected step");
+  }
+
   function handleCreateApp() {
     if (executionMode) {
       return;
@@ -528,6 +598,8 @@ export function App() {
                 />
                 <RightPanel
                   isReadOnly={executionMode !== null}
+                  onDeleteSelectedNode={handleDeleteSelectedNode}
+                  onMoveSelectedNode={handleMoveSelectedNode}
                   onSelectedNodeConfigChange={handleSelectedNodeConfigChange}
                   onSelectedNodeChange={handleSelectedNodeChange}
                   record={selectedRecord}

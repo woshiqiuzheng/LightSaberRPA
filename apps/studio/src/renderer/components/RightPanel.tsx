@@ -1,10 +1,12 @@
 import { getInstructionManifest } from "@lightsaber-rpa/instruction-manifests";
-import { findFlowNode } from "@lightsaber-rpa/flow-core";
+import { findFlowNode, getExecutableFlowNodes } from "@lightsaber-rpa/flow-core";
 
 import type { ResourceStat, StudioAppRecord, StudioTaskRecord } from "../types";
 
 interface RightPanelProps {
   isReadOnly?: boolean;
+  onDeleteSelectedNode: () => void;
+  onMoveSelectedNode: (direction: "up" | "down") => void;
   onSelectedNodeConfigChange: (key: string, value: string | number | boolean) => void;
   record: StudioAppRecord;
   stats: ResourceStat[];
@@ -15,6 +17,8 @@ interface RightPanelProps {
 
 export function RightPanel({
   isReadOnly,
+  onDeleteSelectedNode,
+  onMoveSelectedNode,
   onSelectedNodeConfigChange,
   record,
   stats,
@@ -23,6 +27,8 @@ export function RightPanel({
   onSelectedNodeChange
 }: RightPanelProps) {
   const selectedNode = findFlowNode(record.flow, selectedNodeId);
+  const executableNodes = getExecutableFlowNodes(record.flow);
+  const selectedExecutableIndex = executableNodes.findIndex((node) => node.id === selectedNodeId);
   const selectedManifest =
     selectedNode?.kind === "action" ? getInstructionManifest(selectedNode.instructionId) : undefined;
   const selectedConfigPreview =
@@ -78,6 +84,33 @@ export function RightPanel({
 
             <div className="selection-editor__hint">
               Select another step in the canvas or add a new action from the instruction palette.
+            </div>
+
+            <div className="selection-editor__actions">
+              <button
+                className="ghost-button"
+                disabled={isReadOnly || selectedExecutableIndex <= 0}
+                onClick={() => onMoveSelectedNode("up")}
+                type="button"
+              >
+                Move up
+              </button>
+              <button
+                className="ghost-button"
+                disabled={isReadOnly || selectedExecutableIndex < 0 || selectedExecutableIndex >= executableNodes.length - 1}
+                onClick={() => onMoveSelectedNode("down")}
+                type="button"
+              >
+                Move down
+              </button>
+              <button
+                className="ghost-button ghost-button--danger"
+                disabled={isReadOnly}
+                onClick={onDeleteSelectedNode}
+                type="button"
+              >
+                Delete
+              </button>
             </div>
 
             {selectedNode.kind === "action" && selectedManifest?.inputSchema ? (
