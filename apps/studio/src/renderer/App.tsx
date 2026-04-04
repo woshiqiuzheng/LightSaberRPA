@@ -21,7 +21,6 @@ import {
   createDraftStudioApp,
   deriveBottomPanels,
   deriveResourceStats,
-  getTasksForApp,
   instructionGroups,
   navItems,
   tasks,
@@ -40,6 +39,7 @@ export function App() {
   const [bridgeLabel, setBridgeLabel] = useState("Runner offline");
   const [workspaceLabel, setWorkspaceLabel] = useState("Loading workspace");
   const [appRecords, setAppRecords] = useState(studioApps);
+  const [taskRecords, setTaskRecords] = useState(tasks);
   const [selectedSectionId, setSelectedSectionId] = useState<NavSectionId>("apps");
   const [selectedAppId, setSelectedAppId] = useState(studioApps[0]?.app.id ?? "");
   const [selectedNodeId, setSelectedNodeId] = useState(
@@ -84,6 +84,7 @@ export function App() {
         }
 
         setAppRecords(snapshot.appRecords);
+        setTaskRecords(Array.isArray(snapshot.taskRecords) ? snapshot.taskRecords : tasks);
         setSelectedAppId(snapshot.appRecords[0]?.app.id ?? studioApps[0]?.app.id ?? "");
         setSelectedNodeId(getFirstExecutableNodeId(snapshot.appRecords[0]?.flow) ?? "");
         setWorkspaceLabel("Workspace restored");
@@ -122,18 +123,18 @@ export function App() {
         if (item.id === "triggers") {
           return {
             ...item,
-            count: tasks.length
+            count: taskRecords.length
           };
         }
 
         return item;
       }),
-    [appRecords.length]
+    [appRecords.length, taskRecords.length]
   );
 
   const selectedTasks = useMemo(
-    () => getTasksForApp(selectedRecord.app.id),
-    [selectedRecord.app.id]
+    () => taskRecords.filter((task) => task.appId === selectedRecord.app.id),
+    [selectedRecord.app.id, taskRecords]
   );
 
   const resourceStats = useMemo(
@@ -173,7 +174,8 @@ export function App() {
       const snapshot: StudioWorkspaceSnapshot = {
         version: "0.1.0",
         savedAt: new Date().toISOString(),
-        appRecords
+        appRecords,
+        taskRecords
       };
 
       void window.lightSaberStudio
@@ -189,7 +191,7 @@ export function App() {
     return () => {
       window.clearTimeout(saveTimer);
     };
-  }, [appRecords, isHydrated]);
+  }, [appRecords, isHydrated, taskRecords]);
 
   useEffect(() => {
     return () => {
@@ -404,6 +406,13 @@ export function App() {
     setWorkspaceLabel("Deleted selected step");
   }
 
+  function handleToggleTaskEnabled(taskId: string) {
+    setTaskRecords((current) =>
+      current.map((task) => (task.id === taskId ? { ...task, enabled: !task.enabled } : task))
+    );
+    setWorkspaceLabel("Updated trigger state");
+  }
+
   function handleCreateApp() {
     if (executionMode) {
       return;
@@ -613,7 +622,12 @@ export function App() {
             </>
           ) : null}
 
-          {selectedSectionId === "triggers" ? <TriggersWorkspace tasks={tasks} /> : null}
+          {selectedSectionId === "triggers" ? (
+            <TriggersWorkspace
+              onToggleTaskEnabled={handleToggleTaskEnabled}
+              tasks={taskRecords}
+            />
+          ) : null}
           {selectedSectionId === "market" ? <PlaceholderWorkspace sectionLabel="Market" /> : null}
           {selectedSectionId === "tutorials" ? <PlaceholderWorkspace sectionLabel="Guides" /> : null}
           {selectedSectionId === "community" ? <PlaceholderWorkspace sectionLabel="Community" /> : null}

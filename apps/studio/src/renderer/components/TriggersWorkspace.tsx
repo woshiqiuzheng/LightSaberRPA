@@ -1,10 +1,11 @@
 import type { StudioTaskRecord } from "../types";
 
 interface TriggersWorkspaceProps {
+  onToggleTaskEnabled: (taskId: string) => void;
   tasks: StudioTaskRecord[];
 }
 
-export function TriggersWorkspace({ tasks }: TriggersWorkspaceProps) {
+export function TriggersWorkspace({ onToggleTaskEnabled, tasks }: TriggersWorkspaceProps) {
   return (
     <section className="workspace-card">
       <div className="section-header">
@@ -46,9 +47,13 @@ export function TriggersWorkspace({ tasks }: TriggersWorkspaceProps) {
             </div>
             <span>{task.trigger}</span>
             <span>{task.app}</span>
-            <span className={`trigger-pill ${task.enabled ? "is-on" : "is-off"}`}>
+            <button
+              className={`trigger-pill ${task.enabled ? "is-on" : "is-off"}`}
+              onClick={() => onToggleTaskEnabled(task.id)}
+              type="button"
+            >
               {task.enabled ? "Enabled" : "Disabled"}
-            </span>
+            </button>
           </article>
         ))}
       </div>

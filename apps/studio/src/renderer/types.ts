@@ -75,6 +75,7 @@ export interface StudioWorkspaceSnapshot {
   version: string;
   savedAt: string;
   appRecords: StudioAppRecord[];
+  taskRecords: StudioTaskRecord[];
 }
 
 export type ExecutionMode = "run" | "debug";
