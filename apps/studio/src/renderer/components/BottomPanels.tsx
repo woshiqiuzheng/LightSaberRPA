@@ -15,8 +15,8 @@ export function BottomPanels({ panels }: BottomPanelsProps) {
           </div>
           <div className="bottom-panel__body">
             <div className="bottom-panel__list">
-              {panel.items.map((item) => (
-                <div key={item} className="bottom-panel__list-item">
+              {panel.items.map((item, index) => (
+                <div key={`${panel.id}-${index}`} className="bottom-panel__list-item">
                   {item}
                 </div>
               ))}

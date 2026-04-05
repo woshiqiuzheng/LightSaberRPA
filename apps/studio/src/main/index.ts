@@ -10,14 +10,23 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  applyRunnerEventToRunHistory,
+  type StudioRunHistoryRecord
+} from "../shared/run-history.js";
+
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const workspaceStateFileName = "workspace-state.json";
+const runHistoryFileName = "run-history.json";
 const runEventChannel = "studio:run:event";
 const fileTriggerDebounceMs = 250;
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 
 const activeFileTriggers = new Map<string, RegisteredFileTrigger>();
+let latestWorkspaceSnapshot: StudioWorkspaceSnapshot | null = null;
+let persistedRunHistory: StudioRunHistoryRecord[] = [];
+let runHistoryWriteChain = Promise.resolve();
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -54,15 +63,18 @@ void app.whenReady().then(async () => {
   ipcMain.handle("studio:ping", () => ({ ok: true, timestamp: Date.now() }));
   ipcMain.handle("studio:workspace-state:load", async () => {
     const snapshot = await loadPersistedWorkspaceState();
+    latestWorkspaceSnapshot = snapshot;
     syncFileTriggers(snapshot);
     return snapshot;
   });
+  ipcMain.handle("studio:run-history:list", async () => persistedRunHistory);
   ipcMain.handle("studio:workspace-state:save", async (_event, workspaceState: unknown) => {
     const workspaceStatePath = getWorkspaceStatePath();
     const serializedState = JSON.stringify(workspaceState, null, 2);
 
     await writeFile(workspaceStatePath, serializedState, "utf8");
-    syncFileTriggers(isStudioWorkspaceSnapshot(workspaceState) ? workspaceState : null);
+    latestWorkspaceSnapshot = isStudioWorkspaceSnapshot(workspaceState) ? workspaceState : null;
+    syncFileTriggers(latestWorkspaceSnapshot);
 
     return {
       ok: true as const,
@@ -79,6 +91,7 @@ void app.whenReady().then(async () => {
 
     void executeFlow(request, {
       onEvent: (runnerEvent) => {
+        recordRunnerEvent(runnerEvent);
         dispatchRunEvent(targetWindow, runnerEvent);
       }
     });
@@ -90,7 +103,9 @@ void app.whenReady().then(async () => {
   });
 
   createWindow();
-  syncFileTriggers(await loadPersistedWorkspaceState());
+  latestWorkspaceSnapshot = await loadPersistedWorkspaceState();
+  persistedRunHistory = await loadPersistedRunHistory();
+  syncFileTriggers(latestWorkspaceSnapshot);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -134,6 +149,23 @@ async function loadPersistedWorkspaceState() {
     }
 
     throw error;
+  }
+}
+
+async function loadPersistedRunHistory() {
+  const runHistoryPath = getRunHistoryPath();
+
+  try {
+    const fileContents = stripLeadingByteOrderMark(await readFile(runHistoryPath, "utf8"));
+    const parsed = JSON.parse(fileContents) as unknown;
+    return Array.isArray(parsed) ? (parsed as StudioRunHistoryRecord[]) : [];
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return [];
+    }
+
+    console.warn("[run-history] Failed to load persisted run history:", error);
+    return [];
   }
 }
 
@@ -284,10 +316,16 @@ async function runFileTrigger(registration: RegisteredFileTrigger) {
     await executeFlow(
       {
         flow: registration.flow,
-        mode: "run"
+        mode: "run",
+        source: "file-trigger",
+        triggerTaskId: registration.taskId,
+        triggerLabel: registration.taskName
       },
       {
-        onEvent: dispatchRunEventToAllWindows
+        onEvent: (runnerEvent) => {
+          recordRunnerEvent(runnerEvent);
+          dispatchRunEventToAllWindows(runnerEvent);
+        }
       }
     );
     console.info(
@@ -392,6 +430,43 @@ function getWorkspaceStatePath() {
   return join(app.getPath("userData"), workspaceStateFileName);
 }
 
+function getRunHistoryPath() {
+  return join(app.getPath("userData"), runHistoryFileName);
+}
+
+function recordRunnerEvent(runnerEvent: RunnerEvent) {
+  const appLookup = latestWorkspaceSnapshot?.appRecords.find(
+    (record) => record.flow.id === runnerEvent.flowId
+  );
+
+  persistedRunHistory = applyRunnerEventToRunHistory(
+    persistedRunHistory,
+    runnerEvent,
+    appLookup
+      ? {
+          appId: appLookup.app.id,
+          appName: appLookup.app.name
+        }
+      : undefined
+  );
+
+  void persistRunHistory();
+}
+
+function persistRunHistory() {
+  const serializedHistory = JSON.stringify(persistedRunHistory, null, 2);
+  const runHistoryPath = getRunHistoryPath();
+
+  runHistoryWriteChain = runHistoryWriteChain
+    .catch(() => undefined)
+    .then(() => writeFile(runHistoryPath, serializedHistory, "utf8"))
+    .catch((error) => {
+      console.warn("[run-history] Failed to persist run history:", error);
+    });
+
+  return runHistoryWriteChain;
+}
+
 function isMissingFileError(error: unknown) {
   return (
     typeof error === "object" &&
@@ -437,6 +512,7 @@ interface StudioTaskRecord {
 interface StudioAppRecord {
   app: {
     id: string;
+    name: string;
   };
   flow: FlowDefinition;
 }

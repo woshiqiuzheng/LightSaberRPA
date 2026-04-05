@@ -18,6 +18,7 @@ import { RightPanel } from "./components/RightPanel";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { TriggersWorkspace } from "./components/TriggersWorkspace";
+import { applyRunnerEventToRunHistory } from "../shared/run-history";
 import {
   createDraftStudioApp,
   deriveBottomPanels,
@@ -34,6 +35,7 @@ import type {
   InstructionPaletteEntry,
   NavSectionId,
   StudioAppRecord,
+  StudioRunHistoryRecord,
   StudioWorkspaceSnapshot,
   TriggerDraftInput
 } from "./types";
@@ -52,6 +54,7 @@ export function App() {
   const [executionMode, setExecutionMode] = useState<ExecutionMode | null>(null);
   const [nodeStatuses, setNodeStatuses] = useState<FlowStepStatusMap>({});
   const [runLogItems, setRunLogItems] = useState<string[]>([]);
+  const [runHistoryRecords, setRunHistoryRecords] = useState<StudioRunHistoryRecord[]>([]);
   const activeRunIdRef = useRef<string | null>(null);
 
   const runtimeLabel = useMemo(
@@ -73,12 +76,18 @@ export function App() {
   useEffect(() => {
     let isActive = true;
 
-    void window.lightSaberStudio
-      .loadWorkspaceState()
-      .then((snapshot) => {
+    void Promise.all([
+      window.lightSaberStudio.loadWorkspaceState(),
+      window.lightSaberStudio.loadRunHistory()
+    ])
+      .then(([snapshot, runHistory]) => {
         if (!isActive) {
           return;
         }
+
+        setRunHistoryRecords(
+          Array.isArray(runHistory) ? (runHistory as unknown as StudioRunHistoryRecord[]) : []
+        );
 
         if (!isStudioWorkspaceSnapshot(snapshot) || snapshot.appRecords.length === 0) {
           setWorkspaceLabel("Workspace ready");
@@ -138,6 +147,13 @@ export function App() {
     () => taskRecords.filter((task) => task.appId === selectedRecord.app.id),
     [selectedRecord.app.id, taskRecords]
   );
+  const selectedRunHistory = useMemo(
+    () =>
+      runHistoryRecords.filter(
+        (run) => run.appId === selectedRecord.app.id || run.flowId === selectedRecord.flow.id
+      ),
+    [runHistoryRecords, selectedRecord.app.id, selectedRecord.flow.id]
+  );
 
   const resourceStats = useMemo(
     () => deriveResourceStats(selectedRecord),
@@ -147,11 +163,11 @@ export function App() {
   const bottomPanels = useMemo(
     () =>
       applyExecutionPanels(
-        deriveBottomPanels(selectedRecord, selectedTasks),
+        deriveBottomPanels(selectedRecord, selectedTasks, selectedRunHistory),
         runLogItems,
         executionMode
       ),
-    [executionMode, runLogItems, selectedRecord, selectedTasks]
+    [executionMode, runLogItems, selectedRecord, selectedRunHistory, selectedTasks]
   );
 
   useEffect(() => {
@@ -478,7 +494,8 @@ export function App() {
 
     void window.lightSaberStudio.executeFlow({
       flow: selectedRecord.flow,
-      mode
+      mode,
+      source: "manual"
     }).catch((error) => {
       activeRunIdRef.current = null;
       setExecutionMode(null);
@@ -491,6 +508,20 @@ export function App() {
 
   function handleRunnerEvent(event: RunnerEvent) {
     const isSelectedFlowEvent = event.flowId === selectedRecord.flow.id;
+    const matchedAppRecord = appRecords.find((record) => record.flow.id === event.flowId);
+
+    setRunHistoryRecords((current) =>
+      applyRunnerEventToRunHistory(
+        current,
+        event,
+        matchedAppRecord
+          ? {
+              appId: matchedAppRecord.app.id,
+              appName: matchedAppRecord.app.name
+            }
+          : undefined
+      )
+    );
 
     if (event.type === "run.started") {
       setAppRecords((current) =>
@@ -689,6 +720,7 @@ export function App() {
               }))}
               onCreateTask={handleCreateTrigger}
               onToggleTaskEnabled={handleToggleTaskEnabled}
+              runHistory={runHistoryRecords}
               tasks={taskRecords}
             />
           ) : null}

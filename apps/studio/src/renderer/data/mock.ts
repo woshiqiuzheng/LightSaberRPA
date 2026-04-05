@@ -22,6 +22,7 @@ import type {
   NavItem,
   ResourceStat,
   StudioAppRecord,
+  StudioRunHistoryRecord,
   StudioTaskRecord
 } from "../types";
 
@@ -175,9 +176,20 @@ export function deriveResourceStats(record: StudioAppRecord): ResourceStat[] {
 
 export function deriveBottomPanels(
   record: StudioAppRecord,
-  appTasks: StudioTaskRecord[]
+  appTasks: StudioTaskRecord[],
+  recentRuns: StudioRunHistoryRecord[]
 ): BottomPanelRecord[] {
   const actionableNodes = record.flow.nodes.filter((node) => node.kind === "action");
+  const runLogItems =
+    recentRuns.length > 0
+      ? recentRuns
+          .slice(0, 4)
+          .map((run) => `${formatRunTimestamp(run.startedAt)} · ${formatRunSource(run)} · ${run.status} · ${run.summary}`)
+      : [
+          `Loaded ${record.flow.name}`,
+          `Prepared ${record.focusFields.length} focus fields`,
+          appTasks.length > 0 ? `Found ${appTasks.length} trigger bindings` : "No trigger bindings yet"
+        ];
 
   return [
     {
@@ -199,12 +211,8 @@ export function deriveBottomPanels(
     {
       id: "run-log",
       label: "Run Logs",
-      status: record.lastRunLabel,
-      items: [
-        `Loaded ${record.flow.name}`,
-        `Prepared ${record.focusFields.length} focus fields`,
-        appTasks.length > 0 ? `Found ${appTasks.length} trigger bindings` : "No trigger bindings yet"
-      ]
+      status: recentRuns.length > 0 ? `${recentRuns.length} recent runs` : record.lastRunLabel,
+      items: runLogItems
     },
     {
       id: "data-table",
@@ -337,6 +345,29 @@ function actionNode(
 
 function getInstructionRef(node: FlowNode): string {
   return node.kind === "action" ? node.instructionId : node.kind;
+}
+
+function formatRunSource(run: StudioRunHistoryRecord) {
+  if (run.source === "file-trigger") {
+    return run.triggerLabel ? `file trigger (${run.triggerLabel})` : "file trigger";
+  }
+
+  if (run.source === "schedule-trigger") {
+    return "schedule";
+  }
+
+  return run.mode === "debug" ? "debug" : "manual";
+}
+
+function formatRunTimestamp(timestamp: string) {
+  const value = new Date(timestamp);
+
+  return Number.isNaN(value.getTime())
+    ? timestamp
+    : value.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
 }
 
 function buildDefaultConfig(manifest: InstructionManifestSpec) {

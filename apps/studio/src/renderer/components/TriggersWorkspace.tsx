@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { StudioTaskRecord, TriggerDraftInput } from "../types";
+import type { StudioRunHistoryRecord, StudioTaskRecord, TriggerDraftInput } from "../types";
 
 interface TriggersWorkspaceProps {
   apps: Array<{
@@ -9,6 +9,7 @@ interface TriggersWorkspaceProps {
   }>;
   onCreateTask: (draft: TriggerDraftInput) => void;
   onToggleTaskEnabled: (taskId: string) => void;
+  runHistory: StudioRunHistoryRecord[];
   tasks: StudioTaskRecord[];
 }
 
@@ -16,6 +17,7 @@ export function TriggersWorkspace({
   apps,
   onCreateTask,
   onToggleTaskEnabled,
+  runHistory,
   tasks
 }: TriggersWorkspaceProps) {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
@@ -235,6 +237,60 @@ export function TriggersWorkspace({
           </article>
         ))}
       </div>
+
+      <div className="trigger-history">
+        <div className="section-header">
+          <div>
+            <h2>Recent Runs</h2>
+            <div className="section-header__caption">
+              Latest executions from manual runs and trigger-driven automation.
+            </div>
+          </div>
+        </div>
+
+        {runHistory.length > 0 ? (
+          <div className="trigger-history__list">
+            {runHistory.slice(0, 6).map((run) => (
+              <article key={run.runId} className="trigger-history__item">
+                <div>
+                  <strong>{run.appName ?? run.flowId}</strong>
+                  <p>{run.summary}</p>
+                </div>
+                <span className={`trigger-pill ${run.status === "success" ? "is-on" : run.status === "failed" ? "is-off" : ""}`}>
+                  {run.status}
+                </span>
+                <span>{formatRunOrigin(run)}</span>
+                <span>{formatRunTime(run.startedAt)}</span>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="trigger-history__empty">No run history yet. Start a manual run or enable a trigger.</div>
+        )}
+      </div>
     </section>
   );
+}
+
+function formatRunOrigin(run: StudioRunHistoryRecord) {
+  if (run.source === "file-trigger") {
+    return run.triggerLabel ? `File trigger · ${run.triggerLabel}` : "File trigger";
+  }
+
+  if (run.source === "schedule-trigger") {
+    return "Schedule";
+  }
+
+  return run.mode === "debug" ? "Debug" : "Manual";
+}
+
+function formatRunTime(timestamp: string) {
+  const value = new Date(timestamp);
+
+  return Number.isNaN(value.getTime())
+    ? timestamp
+    : value.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
 }

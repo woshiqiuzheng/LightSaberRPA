@@ -1,6 +1,7 @@
 import type { InstructionManifestSpec } from "@lightsaber-rpa/instruction-manifests";
 import type { FlowDefinition, FlowNodeStatus } from "@lightsaber-rpa/flow-core";
 import type { AppMetadata, ProjectMetadata } from "@lightsaber-rpa/shared";
+import type { StudioRunHistoryRecord } from "../shared/run-history";
 
 export type NavSectionId = "apps" | "triggers" | "market" | "tutorials" | "community";
 
@@ -93,8 +94,11 @@ export interface StudioWorkspaceSnapshot {
   savedAt: string;
   appRecords: StudioAppRecord[];
   taskRecords: StudioTaskRecord[];
+  runHistoryRecords?: StudioRunHistoryRecord[];
 }
 
 export type ExecutionMode = "run" | "debug";
 
 export type FlowStepStatusMap = Partial<Record<string, FlowNodeStatus>>;
+
+export type { StudioRunHistoryRecord };

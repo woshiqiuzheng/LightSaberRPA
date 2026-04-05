@@ -1261,6 +1261,47 @@ button {
   background: rgba(255, 171, 64, 0.14);
 }
 
+.trigger-pill:where(:not(.is-on, .is-off)) {
+  color: #3f69ff;
+  background: rgba(63, 105, 255, 0.12);
+}
+
+.trigger-history {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(97, 120, 164, 0.14);
+}
+
+.trigger-history__list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.trigger-history__item {
+  display: grid;
+  grid-template-columns: 1.5fr 0.5fr 0.8fr 0.4fr;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 0;
+  border-top: 1px solid rgba(97, 120, 164, 0.1);
+}
+
+.trigger-history__item p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.trigger-history__empty {
+  margin-top: 14px;
+  border-radius: 16px;
+  padding: 16px;
+  background: #f6f9fe;
+  color: var(--muted);
+}
+
 .workspace-card--placeholder {
   display: grid;
   place-items: center;
@@ -1393,7 +1434,8 @@ button {
   }
 
   .trigger-table__head,
-  .trigger-row {
+  .trigger-row,
+  .trigger-history__item {
     grid-template-columns: 1fr;
   }
 }

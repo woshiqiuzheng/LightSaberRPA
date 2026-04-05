@@ -13,10 +13,14 @@ import { setTimeout as delay } from "node:timers/promises";
 import * as XLSX from "xlsx";
 
 export type RunnerMode = "run" | "debug";
+export type RunnerSource = "manual" | "file-trigger" | "schedule-trigger";
 
 export interface RunnerExecuteFlowRequest {
   flow: FlowDefinition;
   mode?: RunnerMode;
+  source?: RunnerSource;
+  triggerTaskId?: string;
+  triggerLabel?: string;
 }
 
 export interface RunnerExecuteFlowOptions {
@@ -36,26 +40,33 @@ export type RunnerEvent =
       runId: string;
       flowId: string;
       mode: RunnerMode;
+      source: RunnerSource;
       timestamp: string;
       totalSteps: number;
+      triggerTaskId?: string;
+      triggerLabel?: string;
       message: string;
     }
   | {
       type: "step.started";
       runId: string;
       flowId: string;
+      source: RunnerSource;
       nodeId: string;
       nodeName: string;
       instructionId?: string;
       timestamp: string;
       stepIndex: number;
       totalSteps: number;
+      triggerTaskId?: string;
+      triggerLabel?: string;
       message: string;
     }
   | {
       type: "step.completed";
       runId: string;
       flowId: string;
+      source: RunnerSource;
       nodeId: string;
       nodeName: string;
       instructionId?: string;
@@ -63,12 +74,15 @@ export type RunnerEvent =
       stepIndex: number;
       totalSteps: number;
       output?: Record<string, unknown>;
+      triggerTaskId?: string;
+      triggerLabel?: string;
       message: string;
     }
   | {
       type: "step.failed";
       runId: string;
       flowId: string;
+      source: RunnerSource;
       nodeId: string;
       nodeName: string;
       instructionId?: string;
@@ -76,14 +90,19 @@ export type RunnerEvent =
       stepIndex: number;
       totalSteps: number;
       errorMessage: string;
+      triggerTaskId?: string;
+      triggerLabel?: string;
       message: string;
     }
   | {
       type: "run.completed";
       runId: string;
       flowId: string;
+      source: RunnerSource;
       timestamp: string;
       status: FlowNodeStatus;
+      triggerTaskId?: string;
+      triggerLabel?: string;
       message: string;
     };
 
@@ -94,6 +113,7 @@ export async function executeFlow(
   options: RunnerExecuteFlowOptions = {}
 ): Promise<RunnerExecuteFlowResult> {
   const mode = request.mode ?? "run";
+  const source = request.source ?? "manual";
   const runId = crypto.randomUUID();
   const executableNodes = getExecutableFlowNodes(request.flow);
   const logs: string[] = [];
@@ -112,8 +132,11 @@ export async function executeFlow(
       runId,
       flowId: request.flow.id,
       mode,
+      source,
       timestamp: new Date().toISOString(),
       totalSteps: executableNodes.length,
+      triggerTaskId: request.triggerTaskId,
+      triggerLabel: request.triggerLabel,
       message: `Started ${mode} for ${request.flow.name}`
     },
     options,
@@ -128,12 +151,15 @@ export async function executeFlow(
         type: "step.started",
         runId,
         flowId: request.flow.id,
+        source,
         nodeId: node.id,
         nodeName: node.name,
         instructionId: node.kind === "action" ? node.instructionId : undefined,
         timestamp: new Date().toISOString(),
         stepIndex: index,
         totalSteps: executableNodes.length,
+        triggerTaskId: request.triggerTaskId,
+        triggerLabel: request.triggerLabel,
         message: `Running ${node.name}`
       },
       options,
@@ -150,6 +176,7 @@ export async function executeFlow(
           type: "step.completed",
           runId,
           flowId: request.flow.id,
+          source,
           nodeId: node.id,
           nodeName: node.name,
           instructionId: node.kind === "action" ? node.instructionId : undefined,
@@ -157,6 +184,8 @@ export async function executeFlow(
           stepIndex: index,
           totalSteps: executableNodes.length,
           output,
+          triggerTaskId: request.triggerTaskId,
+          triggerLabel: request.triggerLabel,
           message: `Completed ${node.name}`
         },
         options,
@@ -172,6 +201,7 @@ export async function executeFlow(
           type: "step.failed",
           runId,
           flowId: request.flow.id,
+          source,
           nodeId: node.id,
           nodeName: node.name,
           instructionId: node.kind === "action" ? node.instructionId : undefined,
@@ -179,6 +209,8 @@ export async function executeFlow(
           stepIndex: index,
           totalSteps: executableNodes.length,
           errorMessage,
+          triggerTaskId: request.triggerTaskId,
+          triggerLabel: request.triggerLabel,
           message: `Failed ${node.name}: ${errorMessage}`
         },
         options,
@@ -201,8 +233,11 @@ export async function executeFlow(
           type: "run.completed",
           runId,
           flowId: request.flow.id,
+          source,
           timestamp: endedAt,
           status: "failed",
+          triggerTaskId: request.triggerTaskId,
+          triggerLabel: request.triggerLabel,
           message: `Run failed after ${node.name}`
         },
         options,
@@ -240,8 +275,11 @@ export async function executeFlow(
       type: "run.completed",
       runId,
       flowId: request.flow.id,
+      source,
       timestamp: endedAt,
       status: "success",
+      triggerTaskId: request.triggerTaskId,
+      triggerLabel: request.triggerLabel,
       message: `Run completed for ${request.flow.name}`
     },
     options,
