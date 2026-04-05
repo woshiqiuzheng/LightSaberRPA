@@ -33,6 +33,7 @@ import type {
   FlowStepStatusMap,
   InstructionPaletteEntry,
   NavSectionId,
+  StudioAppRecord,
   StudioWorkspaceSnapshot,
   TriggerDraftInput
 } from "./types";
@@ -427,7 +428,8 @@ export function App() {
       trigger: input.trigger,
       app: appName,
       condition: input.condition,
-      enabled: input.enabled
+      enabled: input.enabled,
+      config: input.config
     };
 
     setTaskRecords((current) => [nextTask, ...current]);
@@ -488,7 +490,21 @@ export function App() {
   }
 
   function handleRunnerEvent(event: RunnerEvent) {
+    const isSelectedFlowEvent = event.flowId === selectedRecord.flow.id;
+
     if (event.type === "run.started") {
+      setAppRecords((current) =>
+        updateAppLastRunLabel(
+          current,
+          event.flowId,
+          event.mode === "debug" ? "Debugging now" : "Running now"
+        )
+      );
+
+      if (!isSelectedFlowEvent) {
+        return;
+      }
+
       activeRunIdRef.current = event.runId;
       setExecutionMode(event.mode);
       setRunLogItems((current) => appendRunLog(current, event.message));
@@ -496,7 +512,25 @@ export function App() {
       return;
     }
 
-    if (activeRunIdRef.current && event.runId !== activeRunIdRef.current) {
+    if (!isSelectedFlowEvent) {
+      if (event.type === "run.completed") {
+        setAppRecords((current) =>
+          updateAppLastRunLabel(
+            current,
+            event.flowId,
+            event.status === "success" ? "Ran just now" : "Run failed just now"
+          )
+        );
+      }
+
+      return;
+    }
+
+    if (!activeRunIdRef.current) {
+      activeRunIdRef.current = event.runId;
+    }
+
+    if (event.runId !== activeRunIdRef.current) {
       return;
     }
 
@@ -542,24 +576,11 @@ export function App() {
       setRunLogItems((current) => appendRunLog(current, event.message));
       setWorkspaceLabel(event.status === "success" ? "Run finished" : "Run failed");
       setAppRecords((current) =>
-        current.map((record) => {
-          if (record.app.id !== selectedRecord.app.id) {
-            return record;
-          }
-
-          return {
-            ...record,
-            lastRunLabel: event.status === "success" ? "Ran just now" : "Run failed just now",
-            app: {
-              ...record.app,
-              updatedAt: "Just now"
-            },
-            project: {
-              ...record.project,
-              updatedAt: "Just now"
-            }
-          };
-        })
+        updateAppLastRunLabel(
+          current,
+          event.flowId,
+          event.status === "success" ? "Ran just now" : "Run failed just now"
+        )
       );
     }
   }
@@ -737,6 +758,31 @@ function getNextDraftSeed(appRecords: typeof studioApps) {
 
 function createTriggerId(taskRecords: { id: string }[]) {
   return `task-${taskRecords.length + 1}`;
+}
+
+function updateAppLastRunLabel(
+  records: StudioAppRecord[],
+  flowId: string,
+  lastRunLabel: string
+) {
+  return records.map((record) => {
+    if (record.flow.id !== flowId) {
+      return record;
+    }
+
+    return {
+      ...record,
+      lastRunLabel,
+      app: {
+        ...record.app,
+        updatedAt: "Just now"
+      },
+      project: {
+        ...record.project,
+        updatedAt: "Just now"
+      }
+    };
+  });
 }
 
 function isStudioWorkspaceSnapshot(value: unknown): value is StudioWorkspaceSnapshot {

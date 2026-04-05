@@ -25,6 +25,9 @@ export function TriggersWorkspace({
   const [draftCondition, setDraftCondition] = useState(
     "Watch D:/watch for new files and run the selected app."
   );
+  const [draftDirectory, setDraftDirectory] = useState("D:/watch");
+  const [draftPattern, setDraftPattern] = useState("*.txt");
+  const [draftRecursive, setDraftRecursive] = useState(true);
   const [draftEnabled, setDraftEnabled] = useState(true);
 
   useEffect(() => {
@@ -32,6 +35,14 @@ export function TriggersWorkspace({
       setDraftAppId(apps[0].id);
     }
   }, [apps, draftAppId]);
+
+  useEffect(() => {
+    if (draftTrigger === "File trigger") {
+      setDraftCondition(
+        `Watch ${draftDirectory || "D:/watch"} for ${draftPattern || "*"} changes and run the selected app.`
+      );
+    }
+  }, [draftDirectory, draftPattern, draftTrigger]);
 
   function handleCreate() {
     if (!draftName.trim() || !draftCondition.trim() || !draftAppId) {
@@ -43,12 +54,24 @@ export function TriggersWorkspace({
       name: draftName.trim(),
       trigger: draftTrigger,
       condition: draftCondition.trim(),
-      enabled: draftEnabled
+      enabled: draftEnabled,
+      config:
+        draftTrigger === "File trigger"
+          ? {
+              directory: draftDirectory.trim(),
+              filePattern: draftPattern.trim(),
+              recursive: draftRecursive,
+              eventTypes: ["rename", "change"]
+            }
+          : undefined
     });
 
     setDraftName(`New trigger ${tasks.length + 1}`);
     setDraftTrigger("File trigger");
     setDraftCondition("Watch D:/watch for new files and run the selected app.");
+    setDraftDirectory("D:/watch");
+    setDraftPattern("*.txt");
+    setDraftRecursive(true);
     setDraftEnabled(true);
     setIsComposerOpen(false);
   }
@@ -118,6 +141,40 @@ export function TriggersWorkspace({
               </span>
             </label>
           </div>
+
+          {draftTrigger === "File trigger" ? (
+            <div className="trigger-composer__grid">
+              <label className="form-field">
+                <span className="form-field__label">Directory</span>
+                <input
+                  onChange={(event) => setDraftDirectory(event.target.value)}
+                  type="text"
+                  value={draftDirectory}
+                />
+              </label>
+
+              <label className="form-field">
+                <span className="form-field__label">File pattern</span>
+                <input
+                  onChange={(event) => setDraftPattern(event.target.value)}
+                  type="text"
+                  value={draftPattern}
+                />
+              </label>
+
+              <label className="checkbox-field">
+                <input
+                  checked={draftRecursive}
+                  onChange={(event) => setDraftRecursive(event.target.checked)}
+                  type="checkbox"
+                />
+                <span>
+                  <strong>Include subfolders</strong>
+                  <small>Register the watcher in recursive mode when supported.</small>
+                </span>
+              </label>
+            </div>
+          ) : null}
 
           <label className="form-field">
             <span className="form-field__label">Condition</span>

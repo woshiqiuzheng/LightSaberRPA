@@ -56,6 +56,7 @@ export interface StudioTaskRecord {
   app: string;
   condition: string;
   enabled: boolean;
+  config?: TriggerConfig;
 }
 
 export interface TriggerDraftInput {
@@ -64,6 +65,14 @@ export interface TriggerDraftInput {
   trigger: string;
   condition: string;
   enabled: boolean;
+  config?: TriggerConfig;
+}
+
+export interface TriggerConfig {
+  directory?: string;
+  filePattern?: string;
+  recursive?: boolean;
+  eventTypes?: string[];
 }
 
 export interface ResourceStat {

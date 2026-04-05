@@ -127,7 +127,13 @@ export const tasks: StudioTaskRecord[] = [
     trigger: "File trigger",
     app: "Douyin Video Capture",
     condition: "Watch D:/watch/douyin for new or updated .txt / .xlsx files",
-    enabled: false
+    enabled: false,
+    config: {
+      directory: "D:/watch/douyin",
+      filePattern: "*.{txt,xlsx}",
+      recursive: true,
+      eventTypes: ["rename", "change"]
+    }
   },
   {
     id: "task-daily-reconcile",
