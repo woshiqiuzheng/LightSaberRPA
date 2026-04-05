@@ -7,6 +7,7 @@ import {
   removeFlowNode,
   updateFlowNode
 } from "@lightsaber-rpa/flow-core";
+import type { RunnerEvent } from "@lightsaber-rpa/runner";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BottomPanels } from "./components/BottomPanels";
@@ -50,8 +51,7 @@ export function App() {
   const [executionMode, setExecutionMode] = useState<ExecutionMode | null>(null);
   const [nodeStatuses, setNodeStatuses] = useState<FlowStepStatusMap>({});
   const [runLogItems, setRunLogItems] = useState<string[]>([]);
-  const executionTimersRef = useRef<number[]>([]);
-  const executionTokenRef = useRef(0);
+  const activeRunIdRef = useRef<string | null>(null);
 
   const runtimeLabel = useMemo(
     () => `${bridgeLabel} / ${workspaceLabel}`,
@@ -195,14 +195,17 @@ export function App() {
   }, [appRecords, isHydrated, taskRecords]);
 
   useEffect(() => {
+    const unsubscribe = window.lightSaberStudio.onRunEvent((event) => {
+      handleRunnerEvent(event);
+    });
+
     return () => {
-      clearExecutionTimers(executionTimersRef);
+      unsubscribe();
     };
-  }, []);
+  }, [appRecords, selectedAppId]);
 
   useEffect(() => {
-    clearExecutionTimers(executionTimersRef);
-    executionTokenRef.current += 1;
+    activeRunIdRef.current = null;
     setExecutionMode(null);
     setNodeStatuses({});
     setRunLogItems([]);
@@ -447,14 +450,14 @@ export function App() {
   }
 
   function handleRun() {
-    startExecutionPlayback("run");
+    startRunnerExecution("run");
   }
 
   function handleDebug() {
-    startExecutionPlayback("debug");
+    startRunnerExecution("debug");
   }
 
-  function startExecutionPlayback(mode: ExecutionMode) {
+  function startRunnerExecution(mode: ExecutionMode) {
     const executableNodes = getExecutableFlowNodes(selectedRecord.flow);
 
     if (executableNodes.length === 0) {
@@ -463,85 +466,102 @@ export function App() {
       return;
     }
 
-    clearExecutionTimers(executionTimersRef);
-
-    const nextToken = executionTokenRef.current + 1;
-    executionTokenRef.current = nextToken;
-
+    activeRunIdRef.current = null;
     setExecutionMode(mode);
     setNodeStatuses(
       Object.fromEntries(executableNodes.map((node) => [node.id, "idle"])) as FlowStepStatusMap
     );
-    setRunLogItems([`${mode === "debug" ? "Debug" : "Run"} started for ${selectedRecord.app.name}`]);
-    setWorkspaceLabel(mode === "debug" ? "Debug playback started" : "Run playback started");
+    setRunLogItems([`${mode === "debug" ? "Debug" : "Run"} requested for ${selectedRecord.app.name}`]);
+    setWorkspaceLabel(mode === "debug" ? "Debug requested" : "Run requested");
 
-    const startSpacingMs = mode === "debug" ? 1400 : 850;
-    const stepDurationMs = mode === "debug" ? 800 : 420;
-
-    executableNodes.forEach((node, index) => {
-      const startDelay = index * startSpacingMs;
-      const finishDelay = startDelay + stepDurationMs;
-
-      executionTimersRef.current.push(
-        window.setTimeout(() => {
-          if (executionTokenRef.current !== nextToken) {
-            return;
-          }
-
-          setSelectedNodeId(node.id);
-          setNodeStatuses((current) => ({
-            ...current,
-            [node.id]: "running"
-          }));
-          setRunLogItems((current) =>
-            appendRunLog(current, `${formatStepIndex(index)} Running ${node.name}`)
-          );
-        }, startDelay)
+    void window.lightSaberStudio.executeFlow({
+      flow: selectedRecord.flow,
+      mode
+    }).catch((error) => {
+      activeRunIdRef.current = null;
+      setExecutionMode(null);
+      setRunLogItems((current) =>
+        appendRunLog(current, `Failed to start runner: ${error instanceof Error ? error.message : String(error)}`)
       );
-
-      executionTimersRef.current.push(
-        window.setTimeout(() => {
-          if (executionTokenRef.current !== nextToken) {
-            return;
-          }
-
-          setNodeStatuses((current) => ({
-            ...current,
-            [node.id]: "success"
-          }));
-          setRunLogItems((current) =>
-            appendRunLog(current, `${formatStepIndex(index)} Completed ${node.name}`)
-          );
-
-          if (index === executableNodes.length - 1) {
-            clearExecutionTimers(executionTimersRef);
-            executionTokenRef.current += 1;
-            setExecutionMode(null);
-            setWorkspaceLabel(mode === "debug" ? "Debug playback finished" : "Run playback finished");
-            setAppRecords((current) =>
-              current.map((record) => {
-                if (record.app.id !== selectedRecord.app.id) {
-                  return record;
-                }
-
-                return {
-                  ...record,
-                  lastRunLabel: `${mode === "debug" ? "Debugged" : "Ran"} just now`,
-                  app: {
-                    ...record.app,
-                    updatedAt: "Just now"
-                  },
-                  project: {
-                    ...record.project,
-                    updatedAt: "Just now"
-                  }
-                };
-              })
-            );
-          }
-        }, finishDelay)
-      );
+      setWorkspaceLabel("Run request failed");
     });
+  }
+
+  function handleRunnerEvent(event: RunnerEvent) {
+    if (event.type === "run.started") {
+      activeRunIdRef.current = event.runId;
+      setExecutionMode(event.mode);
+      setRunLogItems((current) => appendRunLog(current, event.message));
+      setWorkspaceLabel(event.mode === "debug" ? "Debug started" : "Run started");
+      return;
+    }
+
+    if (activeRunIdRef.current && event.runId !== activeRunIdRef.current) {
+      return;
+    }
+
+    if (event.type === "step.started") {
+      setSelectedNodeId(event.nodeId);
+      setNodeStatuses((current) => ({
+        ...current,
+        [event.nodeId]: "running"
+      }));
+      setRunLogItems((current) =>
+        appendRunLog(current, `${formatStepIndex(event.stepIndex)} ${event.message}`)
+      );
+      return;
+    }
+
+    if (event.type === "step.completed") {
+      setNodeStatuses((current) => ({
+        ...current,
+        [event.nodeId]: "success"
+      }));
+      setRunLogItems((current) =>
+        appendRunLog(current, `${formatStepIndex(event.stepIndex)} ${event.message}`)
+      );
+      return;
+    }
+
+    if (event.type === "step.failed") {
+      setNodeStatuses((current) => ({
+        ...current,
+        [event.nodeId]: "failed"
+      }));
+      setRunLogItems((current) =>
+        appendRunLog(current, `${formatStepIndex(event.stepIndex)} ${event.message}`)
+      );
+      setExecutionMode(null);
+      setWorkspaceLabel("Run failed");
+      return;
+    }
+
+    if (event.type === "run.completed") {
+      activeRunIdRef.current = null;
+      setExecutionMode(null);
+      setRunLogItems((current) => appendRunLog(current, event.message));
+      setWorkspaceLabel(event.status === "success" ? "Run finished" : "Run failed");
+      setAppRecords((current) =>
+        current.map((record) => {
+          if (record.app.id !== selectedRecord.app.id) {
+            return record;
+          }
+
+          return {
+            ...record,
+            lastRunLabel: event.status === "success" ? "Ran just now" : "Run failed just now",
+            app: {
+              ...record.app,
+              updatedAt: "Just now"
+            },
+            project: {
+              ...record.project,
+              updatedAt: "Just now"
+            }
+          };
+        })
+      );
+    }
   }
 
   return (
@@ -688,11 +708,6 @@ function applyExecutionPanels(
 
 function appendRunLog(current: string[], entry: string) {
   return [...current, entry].slice(-8);
-}
-
-function clearExecutionTimers(timersRef: { current: number[] }) {
-  timersRef.current.forEach((timer) => window.clearTimeout(timer));
-  timersRef.current = [];
 }
 
 function cloneConfig(config: Record<string, unknown>) {

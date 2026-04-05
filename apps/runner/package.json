@@ -3,9 +3,29 @@
   "private": true,
   "version": "0.1.0",
   "description": "Local execution service for LightSaberRPA.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@lightsaber-rpa/flow-core": "workspace:*",
+    "xlsx": "^0.18.5"
+  },
   "scripts": {
-    "build": "node -e \"console.log('Runner build scaffold pending')\"",
-    "dev": "node -e \"console.log('Runner scaffold pending')\"",
-    "typecheck": "node -e \"console.log('Runner typecheck scaffold pending')\""
+    "build": "tsc -p tsconfig.json",
+    "dev": "node --enable-source-maps dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
   }
 }

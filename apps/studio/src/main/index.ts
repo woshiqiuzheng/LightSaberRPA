@@ -1,3 +1,8 @@
+import {
+  executeFlow,
+  type RunnerEvent,
+  type RunnerExecuteFlowRequest
+} from "@lightsaber-rpa/runner";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -5,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const workspaceStateFileName = "workspace-state.json";
+const runEventChannel = "studio:run:event";
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 
@@ -32,10 +38,11 @@ function createWindow() {
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools({ mode: "detach" });
-    return;
+    return mainWindow;
   }
 
   mainWindow.loadFile(join(currentDir, "../renderer/index.html"));
+  return mainWindow;
 }
 
 app.whenReady().then(() => {
@@ -66,6 +73,25 @@ app.whenReady().then(() => {
       timestamp: Date.now()
     };
   });
+  ipcMain.handle("studio:run:execute", async (event, request: RunnerExecuteFlowRequest) => {
+    const targetWindow = BrowserWindow.fromWebContents(event.sender);
+
+    if (!targetWindow) {
+      throw new Error("Unable to resolve the target Studio window.");
+    }
+
+    void executeFlow(request, {
+      onEvent: (runnerEvent) => {
+        dispatchRunEvent(targetWindow, runnerEvent);
+      }
+    });
+
+    return {
+      ok: true as const,
+      startedAt: Date.now()
+    };
+  });
+
   createWindow();
 
   app.on("activate", () => {
@@ -80,6 +106,12 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
+function dispatchRunEvent(targetWindow: BrowserWindow, runnerEvent: RunnerEvent) {
+  if (!targetWindow.isDestroyed()) {
+    targetWindow.webContents.send(runEventChannel, runnerEvent);
+  }
+}
 
 function getWorkspaceStatePath() {
   return join(app.getPath("userData"), workspaceStateFileName);
